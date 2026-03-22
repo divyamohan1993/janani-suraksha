@@ -26,6 +26,13 @@ from app.models.enums import (
 
 router = APIRouter(prefix="/api/v1", tags=["v1"])
 
+DEMO_DISCLAIMER = (
+    "DEMONSTRATION ONLY — NOT FOR CLINICAL USE. "
+    "This system uses synthetic data and approximate risk models that have not been "
+    "clinically validated. Do not use for real medical decisions. "
+    "Always consult a qualified healthcare provider."
+)
+
 # Engine instances will be set by main.py at startup
 _risk_engine = None
 _referral_engine = None
@@ -69,6 +76,7 @@ async def risk_score(factors: RiskFactors):
         weight_kg=factors.weight_kg,
         complication_history=factors.complication_history.value,
     )
+    result["disclaimer"] = DEMO_DISCLAIMER
     return result
 
 
@@ -84,6 +92,7 @@ async def referral_route(request: ReferralRequest):
         capability_required=request.capability_required.value,
         risk_level=request.risk_level.value,
     )
+    result["disclaimer"] = DEMO_DISCLAIMER
     return result
 
 
@@ -100,6 +109,7 @@ async def anemia_predict(input_data: AnemiaInput):
         dietary_score=input_data.dietary_score,
         prev_anemia=input_data.prev_anemia,
     )
+    result["disclaimer"] = DEMO_DISCLAIMER
     return result
 
 
@@ -190,6 +200,7 @@ async def full_assessment(request: AssessmentRequest):
         "alerts": alerts,
         "follow_up_date": follow_up.strftime("%Y-%m-%d"),
         "recommendations": recommendations,
+        "disclaimer": DEMO_DISCLAIMER,
     }
 
 
