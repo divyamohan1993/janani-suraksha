@@ -156,6 +156,9 @@ class RiskScoringEngine:
         height_cm: float,
         weight_kg: float,
         complication_history: str,
+        ifa_compliance: float = 0.5,
+        dietary_score: float = 0.5,
+        prev_anemia: bool = False,
     ) -> dict:
         """O(1) risk scoring via hash table lookup.
 
@@ -170,18 +173,77 @@ class RiskScoringEngine:
         bmi_idx = self._discretize_bmi(height_cm, weight_kg)
         comp_idx = self._discretize_complication(complication_history)
 
-        # O(1) hash lookup
+        # O(1) hash lookup for base clinical risk
         key = self._compute_hash(
             age_idx, parity_idx, hb_idx, bp_idx, gest_idx, bmi_idx, comp_idx
         )
 
         if key in self._table:
-            return self._table[key]
+            result = dict(self._table[key])  # Copy to avoid mutating cache
+        else:
+            result = self._compute_risk(
+                age_idx, parity_idx, hb_idx, bp_idx, gest_idx, bmi_idx, comp_idx
+            )
 
-        # Fallback: compute on-the-fly (should not happen with complete table)
-        return self._compute_risk(
-            age_idx, parity_idx, hb_idx, bp_idx, gest_idx, bmi_idx, comp_idx
-        )
+        # Apply IFA compliance, dietary score, and prev_anemia as risk modifiers
+        # These factors modulate the base clinical risk score
+        #
+        # Sources:
+        # - IFA: Cochrane CD004736 — iron supplementation reduces anemia risk by up to 70%
+        #   Poor compliance negates this protective effect (RR modifier)
+        # - Diet: FAO MDD-W 2016 — dietary diversity <5 groups associated with RR 1.3-1.5
+        #   for anemia and adverse birth outcomes
+        # - Prev anemia: NFHS-5 — women with prior anemia have 1.5x recurrence risk
+        base_score = result["risk_score"]
+
+        # IFA: low compliance increases risk (poor compliance = less protection)
+        # Reference: Nivedita K, IJRCOG 2015; WHO ANC Guidelines 2016
+        ifa_modifier = 1.0 + (1.0 - ifa_compliance) * 0.3  # 1.0 at 100%, 1.3 at 0%
+
+        # Dietary: poor diet increases risk
+        # Reference: FAO MDD-W 2016 (ISBN 978-92-5-109128-9)
+        diet_modifier = 1.0 + (1.0 - dietary_score) * 0.2  # 1.0 at 100%, 1.2 at 0%
+
+        # Previous anemia: increases recurrence risk
+        # Reference: NFHS-5; Lone FW et al, J Ayub Med Coll 2004;16(2):22-5
+        anemia_modifier = 1.5 if prev_anemia else 1.0
+
+        modified_score = min(base_score * ifa_modifier * diet_modifier * anemia_modifier, 0.95)
+        modified_score = round(modified_score, 4)
+
+        # Reclassify with modified score
+        if modified_score >= 0.15:
+            risk_level = "critical"
+        elif modified_score >= 0.05:
+            risk_level = "high"
+        elif modified_score >= 0.01:
+            risk_level = "medium"
+        else:
+            risk_level = "low"
+
+        result["risk_score"] = modified_score
+        result["risk_level"] = risk_level
+        result["alpha"] = round(modified_score * 100, 2)
+        result["beta"] = round(100 - modified_score * 100, 2)
+
+        # Update interventions based on modifiers
+        if ifa_compliance < 0.5 and "Ensure daily IFA supplementation" not in " ".join(result.get("interventions", [])):
+            result["interventions"] = list(result.get("interventions", []))
+            result["interventions"].insert(0, "URGENT: IFA compliance critically low — ensure daily iron-folic acid intake")
+        if dietary_score < 0.3:
+            result["interventions"] = list(result.get("interventions", []))
+            result["interventions"].append("Dietary diversity below WHO threshold — counsel on iron-rich foods (dal, green leafy vegetables, eggs)")
+        if prev_anemia:
+            result["interventions"] = list(result.get("interventions", []))
+            result["interventions"].append("History of anemia — monitor Hb closely, consider higher IFA dose per clinician guidance")
+
+        # Add modifier details to summary
+        result["risk_factors_summary"] = dict(result.get("risk_factors_summary", {}))
+        result["risk_factors_summary"]["ifa_compliance"] = f"{round(ifa_compliance*100)}% (Morisky scale)"
+        result["risk_factors_summary"]["dietary_diversity"] = f"{round(dietary_score*100)}% (WHO MDD-W)"
+        result["risk_factors_summary"]["previous_anemia"] = "Yes — 1.5x recurrence risk (NFHS-5)" if prev_anemia else "No"
+
+        return result
 
     def _compute_risk(
         self,

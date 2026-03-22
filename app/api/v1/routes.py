@@ -137,7 +137,7 @@ async def full_assessment(request: AssessmentRequest):
     if not _risk_engine or not _referral_engine or not _anemia_engine:
         raise HTTPException(status_code=503, detail="Engines not loaded")
 
-    # Step 1: Risk scoring
+    # Step 1: Risk scoring (includes IFA, dietary, prev_anemia modifiers)
     risk = _risk_engine.score(
         age=request.risk_factors.age,
         parity=request.risk_factors.parity,
@@ -148,6 +148,9 @@ async def full_assessment(request: AssessmentRequest):
         height_cm=request.risk_factors.height_cm,
         weight_kg=request.risk_factors.weight_kg,
         complication_history=request.risk_factors.complication_history.value,
+        ifa_compliance=request.ifa_compliance,
+        dietary_score=request.dietary_score,
+        prev_anemia=request.prev_anemia,
     )
 
     # Step 2: Anemia prediction (if Hb < 11)
