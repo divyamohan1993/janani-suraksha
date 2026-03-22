@@ -211,9 +211,9 @@
                                 <select id="complication_history" x-model="form.complication_history"
                                     class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-saffron focus:border-saffron transition bg-white">
                                     <option value="none">None</option>
-                                    <option value="previous_csection">Previous C-Section</option>
-                                    <option value="previous_pph">Previous PPH</option>
-                                    <option value="previous_eclampsia">Previous Eclampsia</option>
+                                    <option value="prev_csection">Previous C-Section</option>
+                                    <option value="prev_pph">Previous PPH</option>
+                                    <option value="prev_eclampsia">Previous Eclampsia</option>
                                     <option value="multiple">Multiple Complications</option>
                                 </select>
                             </div>
@@ -959,7 +959,15 @@
 
                         if (!response.ok) {
                             const errData = await response.json().catch(() => ({}));
-                            throw new Error(errData.detail || errData.message || `Server error: ${response.status}`);
+                            let errMsg = `Server error: ${response.status}`;
+                            if (typeof errData.detail === 'string') {
+                                errMsg = errData.detail;
+                            } else if (Array.isArray(errData.detail)) {
+                                errMsg = errData.detail.map(e => `${e.loc?.join('→') || ''}: ${e.msg}`).join('; ');
+                            } else if (errData.message) {
+                                errMsg = errData.message;
+                            }
+                            throw new Error(errMsg);
                         }
 
                         const raw = await response.json();
