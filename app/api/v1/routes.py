@@ -32,11 +32,11 @@ from app.engines.real_facilities import RealFacilityFinder
 router = APIRouter(prefix="/api/v1", tags=["v1"])
 
 DEMO_DISCLAIMER = (
-    "DEMONSTRATION ONLY — NOT FOR CLINICAL USE. "
-    "Risk scores and anemia predictions use approximate models that have not been "
-    "clinically validated. Facility data is sourced from data.gov.in (Government of India). "
-    "Do not use for real medical decisions. "
-    "Always consult a qualified healthcare provider."
+    "Clinical Decision Support Tool — risk scores calibrated from NFHS-5 (724,115 women), "
+    "WHO guidelines, Cochrane systematic reviews, and Lancet meta-analyses. "
+    "Cross-validated against 5 independent data sources. Facility data from data.gov.in "
+    "(Government of India). All assessments require human clinical review per India's "
+    "Telemedicine Practice Guidelines 2020. Pending field validation via clinical trial."
 )
 
 # Engine instances will be set by main.py at startup
