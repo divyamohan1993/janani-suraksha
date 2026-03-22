@@ -2,7 +2,7 @@
 from datetime import datetime, timedelta
 import uuid
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 
 from app.models.schemas import (
     RiskFactors,
@@ -23,6 +23,7 @@ from app.models.enums import (
     InterventionUrgency,
     BloodBankStatus,
 )
+from app.engines.real_facilities import RealFacilityFinder
 
 router = APIRouter(prefix="/api/v1", tags=["v1"])
 
@@ -37,6 +38,7 @@ DEMO_DISCLAIMER = (
 _risk_engine = None
 _referral_engine = None
 _anemia_engine = None
+_real_facilities = None
 
 
 def set_engines(risk_engine, referral_engine, anemia_engine):
@@ -44,6 +46,11 @@ def set_engines(risk_engine, referral_engine, anemia_engine):
     _risk_engine = risk_engine
     _referral_engine = referral_engine
     _anemia_engine = anemia_engine
+
+
+def set_real_facilities(finder: RealFacilityFinder):
+    global _real_facilities
+    _real_facilities = finder
 
 
 @router.get("/health")
@@ -210,3 +217,29 @@ async def list_facilities():
     if not _referral_engine:
         raise HTTPException(status_code=503, detail="Referral engine not loaded")
     return {"facilities": _referral_engine.get_all_facilities()}
+
+
+@router.get("/nearby-facilities")
+async def nearby_facilities(
+    lat: float = Query(..., description="Latitude"),
+    lon: float = Query(..., description="Longitude"),
+    radius_km: float = Query(25.0, description="Search radius in km"),
+    type: str = Query("hospital", description="Facility type filter"),
+):
+    """Find real nearby health facilities using data.gov.in + geocoding."""
+    if not _real_facilities:
+        raise HTTPException(status_code=503, detail="Real facilities finder not initialized")
+
+    try:
+        facilities = await _real_facilities.find_nearby(lat, lon, radius_km)
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Failed to fetch facility data: {str(e)}")
+
+    return {
+        "facilities": facilities,
+        "count": len(facilities),
+        "search_center": {"lat": lat, "lon": lon},
+        "radius_km": radius_km,
+        "source": "data.gov.in National Hospital Directory",
+        "disclaimer": DEMO_DISCLAIMER,
+    }

@@ -12,7 +12,8 @@ from app.security import RateLimitMiddleware, SecurityHeadersMiddleware, AuditLo
 from app.engines.risk_scoring import RiskScoringEngine
 from app.engines.referral_routing import ReferralRoutingEngine
 from app.engines.anemia_prediction import AnemiaPredictionEngine
-from app.api.v1.routes import router as v1_router, set_engines
+from app.engines.real_facilities import RealFacilityFinder
+from app.api.v1.routes import router as v1_router, set_engines, set_real_facilities
 from app.config import get_settings
 
 # Configure logging
@@ -26,6 +27,7 @@ logger = logging.getLogger("janani")
 risk_engine = RiskScoringEngine()
 referral_engine = ReferralRoutingEngine()
 anemia_engine = AnemiaPredictionEngine()
+real_facility_finder = None  # Initialized in lifespan with config keys
 
 
 @asynccontextmanager
@@ -61,6 +63,20 @@ async def lifespan(app: FastAPI):
         anemia_engine._loaded = True
 
     set_engines(risk_engine, referral_engine, anemia_engine)
+
+    global real_facility_finder
+    real_facility_finder = RealFacilityFinder(
+        google_maps_key=settings.google_maps_api_key,
+        data_gov_key=settings.data_gov_api_key,
+    )
+    real_facilities_path = data_dir / "real_facilities.json"
+    if real_facilities_path.exists():
+        real_facility_finder.load(str(real_facilities_path))
+    else:
+        logger.warning(f"Real facility data not found at {real_facilities_path}")
+    set_real_facilities(real_facility_finder)
+    logger.info(f"Real facility finder: {real_facility_finder.total_facilities} facilities, "
+                f"Google Maps geocoding: {'enabled' if settings.google_maps_api_key else 'disabled'}")
     logger.info("All engines ready.")
 
     yield
@@ -104,12 +120,18 @@ templates = Jinja2Templates(directory=str(templates_dir))
 
 @app.get("/")
 async def home(request: FastAPIRequest):
-    return templates.TemplateResponse("index.html", {"request": request})
+    return templates.TemplateResponse("index.html", {
+        "request": request,
+        "google_maps_key": settings.google_maps_api_key,
+    })
 
 
 @app.get("/dashboard")
 async def dashboard(request: FastAPIRequest):
-    return templates.TemplateResponse("dashboard.html", {"request": request})
+    return templates.TemplateResponse("dashboard.html", {
+        "request": request,
+        "google_maps_key": settings.google_maps_api_key,
+    })
 
 
 @app.get("/about")

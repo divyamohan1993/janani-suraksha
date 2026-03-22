@@ -34,6 +34,16 @@ resource "google_cloud_run_v2_service" "janani" {
         value = "[\"https://${var.domain}\", \"https://${var.service_name}-*.run.app\"]"
       }
 
+      env {
+        name  = "JANANI_GOOGLE_MAPS_API_KEY"
+        value = var.google_maps_api_key
+      }
+
+      env {
+        name  = "JANANI_DATA_GOV_API_KEY"
+        value = var.data_gov_api_key
+      }
+
       startup_probe {
         http_get {
           path = "/api/v1/health"

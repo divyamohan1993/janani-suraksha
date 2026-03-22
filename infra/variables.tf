@@ -50,3 +50,17 @@ variable "domain" {
   type        = string
   default     = "jananisuraksha.dmj.one"
 }
+
+variable "google_maps_api_key" {
+  description = "Google Maps API key for facility maps and geocoding"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "data_gov_api_key" {
+  description = "data.gov.in API key for real facility data"
+  type        = string
+  sensitive   = true
+  default     = ""
+}

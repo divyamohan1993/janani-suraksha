@@ -23,6 +23,10 @@ class Settings(BaseSettings):
     facility_graph_path: str = "data/facility_graph.json"
     hb_trajectories_path: str = "data/hb_trajectories.json"
 
+    # External API keys (loaded from .env)
+    google_maps_api_key: str = ""
+    data_gov_api_key: str = ""
+
     model_config = {"env_prefix": "JANANI_", "env_file": ".env"}
 
 @lru_cache
