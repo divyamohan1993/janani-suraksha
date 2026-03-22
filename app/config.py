@@ -27,6 +27,13 @@ class Settings(BaseSettings):
     google_maps_api_key: str = ""
     data_gov_api_key: str = ""
 
+    # Telegram alerts
+    telegram_bot_token: str = ""  # From @BotFather
+    telegram_chat_id: str = ""    # Target chat/group ID
+
+    # Gemini API (for conversational assessment)
+    gemini_api_key: str = ""  # Google AI Studio key
+
     model_config = {"env_prefix": "JANANI_", "env_file": ".env"}
 
 @lru_cache

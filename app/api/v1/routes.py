@@ -1,9 +1,13 @@
 """API v1 routes for JananiSuraksha engines."""
+import logging
 from datetime import datetime, timedelta
 import uuid
 
+logger = logging.getLogger("janani.routes")
+
 from fastapi import APIRouter, HTTPException, Query
 
+from app.persistence import AssessmentStore
 from app.models.schemas import (
     RiskFactors,
     RiskResult,
@@ -40,6 +44,7 @@ _risk_engine = None
 _referral_engine = None
 _anemia_engine = None
 _real_facilities = None
+_assessment_store = None
 
 
 def set_engines(risk_engine, referral_engine, anemia_engine):
@@ -52,6 +57,11 @@ def set_engines(risk_engine, referral_engine, anemia_engine):
 def set_real_facilities(finder: RealFacilityFinder):
     global _real_facilities
     _real_facilities = finder
+
+
+def set_assessment_store(store: AssessmentStore):
+    global _assessment_store
+    _assessment_store = store
 
 
 @router.get("/health")
@@ -198,7 +208,7 @@ async def full_assessment(request: AssessmentRequest):
     else:
         follow_up = datetime.now() + timedelta(days=30)
 
-    return {
+    response_dict = {
         "assessment_id": str(uuid.uuid4()),
         "timestamp": datetime.now().isoformat(),
         "mother_name": request.mother_name,
@@ -210,6 +220,35 @@ async def full_assessment(request: AssessmentRequest):
         "recommendations": recommendations,
         "disclaimer": DEMO_DISCLAIMER,
     }
+
+    # Persist to SQLite store
+    if _assessment_store:
+        try:
+            _assessment_store.save(response_dict)
+        except Exception as e:
+            logger.warning(f"Failed to persist assessment: {e}")
+
+    return response_dict
+
+
+@router.get("/dashboard-stats")
+async def dashboard_stats():
+    """Real-time dashboard statistics from actual assessments."""
+    if not _assessment_store:
+        return {"total_assessments": 0, "today_assessments": 0, "high_risk": 0, "critical_alerts": 0, "risk_distribution": {}}
+    return _assessment_store.get_stats()
+
+
+@router.get("/recent-assessments")
+async def recent_assessments(limit: int = Query(20, ge=1, le=100)):
+    """Recent assessment history."""
+    if not _assessment_store:
+        return {"assessments": []}
+    assessments = _assessment_store.get_recent(limit)
+    # Strip raw_result to keep response small
+    for a in assessments:
+        a.pop("raw_result", None)
+    return {"assessments": assessments}
 
 
 @router.get("/facilities")
@@ -243,4 +282,116 @@ async def nearby_facilities(
         "radius_km": radius_km,
         "source": "data.gov.in National Hospital Directory",
         "disclaimer": DEMO_DISCLAIMER,
+    }
+
+
+@router.post("/ambulance-dispatch")
+async def ambulance_dispatch(
+    mother_name: str = Query(...),
+    latitude: float = Query(...),
+    longitude: float = Query(...),
+    risk_level: str = Query(...),
+    complication: str = Query("obstetric_emergency"),
+    facility_name: str = Query(""),
+):
+    """Ambulance dispatch endpoint — simulates 108/102 integration.
+
+    In production, this would integrate with GVK EMRI 108 or state 102 services.
+    Currently returns a dispatch confirmation with tracking info.
+    """
+    dispatch_id = f"AMB-{uuid.uuid4().hex[:8].upper()}"
+
+    # Simulate dispatch based on risk level
+    if risk_level == "critical":
+        eta_minutes = 15
+        priority = "P1 - CRITICAL"
+        vehicle_type = "Advanced Life Support (ALS)"
+    elif risk_level == "high":
+        eta_minutes = 25
+        priority = "P2 - HIGH"
+        vehicle_type = "Basic Life Support (BLS)"
+    else:
+        eta_minutes = 45
+        priority = "P3 - STANDARD"
+        vehicle_type = "Patient Transport"
+
+    return {
+        "dispatch_id": dispatch_id,
+        "status": "DISPATCHED",
+        "timestamp": datetime.now().isoformat(),
+        "priority": priority,
+        "vehicle_type": vehicle_type,
+        "eta_minutes": eta_minutes,
+        "pickup_location": {"latitude": latitude, "longitude": longitude},
+        "destination_facility": facility_name or "Nearest equipped facility",
+        "mother_name": mother_name,
+        "complication_type": complication,
+        "emergency_numbers": {
+            "national_ambulance": "108",
+            "maternal_helpline": "102",
+            "janani_express": "1800-180-1104",
+        },
+        "tracking_url": f"https://www.google.com/maps/dir/?api=1&origin={latitude},{longitude}&destination={facility_name or 'nearest+hospital'}&travelmode=driving",
+        "note": "SIMULATION — In production, this dispatches a real ambulance via 108/GVK EMRI integration.",
+        "disclaimer": DEMO_DISCLAIMER,
+    }
+
+
+@router.post("/send-alert")
+async def send_alert(
+    mother_name: str = Query(...),
+    risk_level: str = Query(...),
+    message: str = Query(""),
+    alert_type: str = Query("family"),  # family, asha, anm, dho
+):
+    """Send alert via Telegram bot.
+
+    Supports: family alerts, ASHA notifications, ANM escalation, DHO dashboard alerts.
+    Uses Telegram Bot API (free, no SMS cost).
+    """
+    import httpx
+    from app.config import get_settings
+    settings = get_settings()
+
+    # Build alert message
+    emoji = {"critical": "\U0001f534", "high": "\U0001f7e0", "medium": "\U0001f7e1", "low": "\U0001f7e2"}.get(risk_level, "\u26aa")
+
+    if not message:
+        if risk_level == "critical":
+            message = f"{emoji} EMERGENCY: {mother_name} is CRITICAL risk. Immediate facility transfer needed."
+        elif risk_level == "high":
+            message = f"{emoji} HIGH RISK: {mother_name} needs specialist referral within 48 hours."
+        elif risk_level == "medium":
+            message = f"{emoji} MEDIUM RISK: {mother_name} — ensure IFA compliance and schedule BP recheck in 2 weeks."
+        else:
+            message = f"{emoji} LOW RISK: {mother_name} — routine follow-up scheduled."
+
+    alert_message = f"\U0001f3e5 *JananiSuraksha Alert*\n\n{message}\n\nType: {alert_type.upper()}\nTime: {datetime.now().strftime('%Y-%m-%d %H:%M')}"
+
+    # Send via Telegram if bot token is configured
+    telegram_sent = False
+    if settings.telegram_bot_token and settings.telegram_chat_id:
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                resp = await client.post(
+                    f"https://api.telegram.org/bot{settings.telegram_bot_token}/sendMessage",
+                    json={
+                        "chat_id": settings.telegram_chat_id,
+                        "text": alert_message,
+                        "parse_mode": "Markdown",
+                    }
+                )
+                telegram_sent = resp.status_code == 200
+        except Exception as e:
+            logger.warning(f"Telegram send failed: {e}")
+
+    return {
+        "status": "sent" if telegram_sent else "simulated",
+        "channel": "telegram" if telegram_sent else "demo",
+        "alert_type": alert_type,
+        "mother_name": mother_name,
+        "risk_level": risk_level,
+        "message": alert_message,
+        "telegram_delivered": telegram_sent,
+        "note": "Configure JANANI_TELEGRAM_BOT_TOKEN and JANANI_TELEGRAM_CHAT_ID in .env to enable real Telegram alerts.",
     }

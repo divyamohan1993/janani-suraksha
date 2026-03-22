@@ -254,6 +254,47 @@
                         </div>
                     </fieldset>
 
+                    <!-- Voice Assessment Mode -->
+                    <div class="bg-gradient-to-r from-saffron/10 to-india-green/10 rounded-xl p-5 border border-saffron/30">
+                        <div class="flex items-center justify-between mb-3">
+                            <h3 class="text-sm font-semibold text-india-navy flex items-center">
+                                <svg class="w-5 h-5 mr-2 text-saffron" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm4 10.93A7.001 7.001 0 0017 8a1 1 0 10-2 0A5 5 0 015 8a1 1 0 00-2 0 7.001 7.001 0 006 14.93V17H6a1 1 0 100 2h8a1 1 0 100-2h-3v-2.07z" clip-rule="evenodd"/></svg>
+                                Voice Input
+                            </h3>
+                            <select x-model="voiceLang" class="text-xs border rounded px-2 py-1">
+                                <option value="hi-IN">Hindi</option>
+                                <option value="en-IN">English (India)</option>
+                                <option value="ta-IN">Tamil</option>
+                                <option value="te-IN">Telugu</option>
+                                <option value="bn-IN">Bengali</option>
+                                <option value="mr-IN">Marathi</option>
+                                <option value="gu-IN">Gujarati</option>
+                                <option value="kn-IN">Kannada</option>
+                                <option value="ml-IN">Malayalam</option>
+                                <option value="pa-IN">Punjabi</option>
+                                <option value="or-IN">Odia</option>
+                                <option value="as-IN">Assamese</option>
+                            </select>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <button type="button" @click="toggleVoice()"
+                                :class="isListening ? 'bg-red-500 hover:bg-red-600 animate-pulse' : 'bg-saffron hover:bg-saffron-dark'"
+                                class="text-white rounded-full p-3 transition shadow-lg">
+                                <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm4 10.93A7.001 7.001 0 0017 8a1 1 0 10-2 0A5 5 0 015 8a1 1 0 00-2 0 7.001 7.001 0 006 14.93V17H6a1 1 0 100 2h8a1 1 0 100-2h-3v-2.07z" clip-rule="evenodd"/></svg>
+                            </button>
+                            <div class="flex-1">
+                                <p class="text-sm text-gray-600" x-show="!isListening && !voiceTranscript">Tap the microphone and speak the mother's health details in your language.</p>
+                                <p class="text-sm text-red-600 font-medium animate-pulse" x-show="isListening">Listening... speak now</p>
+                                <p class="text-sm text-gray-800 bg-white rounded p-2 border" x-show="voiceTranscript" x-text="voiceTranscript"></p>
+                            </div>
+                        </div>
+                        <p class="text-xs text-gray-400 mt-2" x-show="voiceError" x-text="voiceError"></p>
+                        <button type="button" x-show="voiceTranscript" @click="parseVoiceInput()"
+                            class="mt-3 text-sm bg-india-navy text-white px-4 py-2 rounded-lg hover:bg-blue-900 transition">
+                            Parse &amp; Fill Form
+                        </button>
+                    </div>
+
                     <!-- Submit Button -->
                     <div class="flex flex-col sm:flex-row gap-3">
                         <button type="submit" :disabled="loading"
@@ -460,6 +501,20 @@
                             </ul>
                         </div>
 
+                        <!-- Emergency Actions (for HIGH/CRITICAL) -->
+                        <div class="flex flex-wrap gap-3 mt-4" x-show="results?.risk_assessment?.risk_level === 'HIGH' || results?.risk_assessment?.risk_level === 'CRITICAL'">
+                            <button type="button" @click="dispatchAmbulance()"
+                                class="flex items-center px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition shadow-lg">
+                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                                Dispatch Ambulance (108)
+                            </button>
+                            <button type="button" @click="sendFamilyAlert()"
+                                class="flex items-center px-4 py-2 bg-saffron text-white rounded-lg text-sm font-medium hover:bg-saffron-dark transition shadow-lg">
+                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                                Alert Family (Telegram)
+                            </button>
+                        </div>
+
                         <!-- Follow-up -->
                         <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5"
                             x-show="results.follow_up">
@@ -572,6 +627,11 @@
                 nearbyError: null,
                 results: null,
                 error: null,
+                voiceLang: 'hi-IN',
+                isListening: false,
+                voiceTranscript: '',
+                voiceError: '',
+                recognition: null,
                 form: {
                     mother_name: '',
                     asha_id: 'ASHA-001',
@@ -799,6 +859,122 @@
                         'unknown': 'Unknown'
                     };
                     return map[status] || status || 'Unknown';
+                },
+
+                toggleVoice() {
+                    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+                        this.voiceError = 'Speech recognition not supported in this browser. Use Chrome.';
+                        return;
+                    }
+                    if (this.isListening) {
+                        this.recognition?.stop();
+                        this.isListening = false;
+                        return;
+                    }
+                    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                    this.recognition = new SpeechRecognition();
+                    this.recognition.lang = this.voiceLang;
+                    this.recognition.continuous = true;
+                    this.recognition.interimResults = true;
+                    this.voiceTranscript = '';
+                    this.voiceError = '';
+                    this.recognition.onresult = (event) => {
+                        let transcript = '';
+                        for (let i = 0; i < event.results.length; i++) {
+                            transcript += event.results[i][0].transcript;
+                        }
+                        this.voiceTranscript = transcript;
+                    };
+                    this.recognition.onerror = (event) => {
+                        this.voiceError = 'Voice error: ' + event.error;
+                        this.isListening = false;
+                    };
+                    this.recognition.onend = () => { this.isListening = false; };
+                    this.recognition.start();
+                    this.isListening = true;
+                },
+
+                parseVoiceInput() {
+                    // Simple NLP: extract numbers and keywords from voice transcript
+                    const text = this.voiceTranscript.toLowerCase();
+
+                    // Extract age
+                    const ageMatch = text.match(/(\d{2})\s*(saal|years?|sal|age|umar)/i) || text.match(/age\s*(\d{2})/i);
+                    if (ageMatch) this.form.age = parseInt(ageMatch[1]);
+
+                    // Extract hemoglobin
+                    const hbMatch = text.match(/(?:hemoglobin|hb|haemoglobin|khoon)\s*[:\s]*(\d+\.?\d*)/i) || text.match(/(\d+\.?\d*)\s*(?:hemoglobin|hb|g\/dl)/i);
+                    if (hbMatch) this.form.hemoglobin = parseFloat(hbMatch[1]);
+
+                    // Extract BP
+                    const bpMatch = text.match(/(?:bp|blood pressure|pressure)\s*[:\s]*(\d{2,3})\s*[\/\s]\s*(\d{2,3})/i) || text.match(/(\d{2,3})\s*(?:by|over|\/)\s*(\d{2,3})/i);
+                    if (bpMatch) {
+                        this.form.bp_systolic = parseInt(bpMatch[1]);
+                        this.form.bp_diastolic = parseInt(bpMatch[2]);
+                    }
+
+                    // Extract gestational weeks
+                    const weekMatch = text.match(/(\d{1,2})\s*(?:hafta|week|hafte|saptah|weeks)/i);
+                    if (weekMatch) this.form.gestational_weeks = parseInt(weekMatch[1]);
+
+                    // Extract weight
+                    const weightMatch = text.match(/(?:wajan|weight|vajan)\s*[:\s]*(\d{2,3})\s*(?:kg|kilo)?/i) || text.match(/(\d{2,3})\s*kg/i);
+                    if (weightMatch) this.form.weight_kg = parseFloat(weightMatch[1]);
+
+                    // Extract height
+                    const heightMatch = text.match(/(?:lambai|height|kad)\s*[:\s]*(\d{2,3})\s*(?:cm|senti)?/i) || text.match(/(\d{3})\s*cm/i);
+                    if (heightMatch) this.form.height_cm = parseFloat(heightMatch[1]);
+
+                    // Extract parity
+                    const parityMatch = text.match(/(?:doosra|teesra|pehla|first|second|third|fourth)/i);
+                    if (parityMatch) {
+                        const map = {pehla: 0, first: 0, doosra: 1, second: 1, teesra: 2, third: 2, fourth: 3};
+                        const val = map[parityMatch[0].toLowerCase()];
+                        if (val !== undefined) this.form.parity = val;
+                    }
+                    const parityNumMatch = text.match(/(?:parity|pregnancy|baccha|delivery)\s*[:\s]*(\d)/i);
+                    if (parityNumMatch) this.form.parity = parseInt(parityNumMatch[1]);
+
+                    // Extract name
+                    const nameMatch = text.match(/(?:naam|name)\s*[:\s]*([a-zA-Z\u0900-\u097F]+(?:\s+[a-zA-Z\u0900-\u097F]+)?)/i);
+                    if (nameMatch) this.form.mother_name = nameMatch[1].trim();
+
+                    showNotification('Voice data parsed and form updated', 'success');
+                },
+
+                async dispatchAmbulance() {
+                    try {
+                        const params = new URLSearchParams({
+                            mother_name: this.form.mother_name || 'Unknown',
+                            latitude: this.form.latitude,
+                            longitude: this.form.longitude,
+                            risk_level: (this.results?.risk_assessment?.risk_level || 'high').toLowerCase(),
+                            facility_name: this.results?.referral?.facility_name || '',
+                        });
+                        const resp = await fetch('/api/v1/ambulance-dispatch?' + params, { method: 'POST' });
+                        const data = await resp.json();
+                        showNotification(`Ambulance ${data.dispatch_id} dispatched! ETA: ${data.eta_minutes} min. Call 108 for status.`, 'success');
+                    } catch (err) {
+                        showNotification('Dispatch failed: ' + err.message, 'error');
+                    }
+                },
+
+                async sendFamilyAlert() {
+                    try {
+                        const params = new URLSearchParams({
+                            mother_name: this.form.mother_name || 'Unknown',
+                            risk_level: (this.results?.risk_assessment?.risk_level || 'medium').toLowerCase(),
+                        });
+                        const resp = await fetch('/api/v1/send-alert?' + params, { method: 'POST' });
+                        const data = await resp.json();
+                        if (data.telegram_delivered) {
+                            showNotification('Alert sent via Telegram!', 'success');
+                        } else {
+                            showNotification('Alert simulated (configure Telegram bot in .env for real delivery)', 'info');
+                        }
+                    } catch (err) {
+                        showNotification('Alert failed: ' + err.message, 'error');
+                    }
                 }
             };
         }

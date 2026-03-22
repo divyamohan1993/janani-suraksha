@@ -426,15 +426,71 @@
                 ],
 
                 init() {
-                    // Animate the assessment counter
-                    this.animateStats();
+                    // Fetch real stats and assessments from persistence
+                    this.fetchStats();
+                    this.fetchRecentAssessments();
                     // Fetch facilities from the API
                     this.fetchFacilities();
-                    // Auto-increment demo counter
-                    this.startAutoIncrement();
                 },
 
-                animateStats() {
+                async fetchStats() {
+                    try {
+                        const response = await fetch('/api/v1/dashboard-stats');
+                        if (!response.ok) throw new Error('Failed to load stats');
+                        const data = await response.json();
+                        if (data.total_assessments > 0) {
+                            // Use real data
+                            this.stats.totalAssessments = data.today_assessments;
+                            this.stats.highRisk = data.high_risk;
+                            this.stats.criticalAlerts = data.critical_alerts;
+
+                            // Update risk distribution with real data
+                            const dist = data.risk_distribution;
+                            const total = data.total_assessments;
+                            if (total > 0) {
+                                this.riskDistribution = [
+                                    { level: 'Low Risk', percentage: Math.round((dist.low / total) * 100), count: dist.low, barColor: 'bg-green-500', textColor: 'text-green-700' },
+                                    { level: 'Medium Risk', percentage: Math.round((dist.medium / total) * 100), count: dist.medium, barColor: 'bg-yellow-500', textColor: 'text-yellow-700' },
+                                    { level: 'High Risk', percentage: Math.round((dist.high / total) * 100), count: dist.high, barColor: 'bg-orange-500', textColor: 'text-orange-700' },
+                                    { level: 'Critical', percentage: Math.round((dist.critical / total) * 100), count: dist.critical, barColor: 'bg-red-600', textColor: 'text-red-700' }
+                                ];
+                            }
+                        } else {
+                            // Fall back to demo animated counter
+                            this.animateDemoStats();
+                        }
+                    } catch (err) {
+                        console.warn('Could not load dashboard stats, using demo data:', err);
+                        this.animateDemoStats();
+                    }
+                },
+
+                async fetchRecentAssessments() {
+                    try {
+                        const response = await fetch('/api/v1/recent-assessments?limit=20');
+                        if (!response.ok) throw new Error('Failed to load recent assessments');
+                        const data = await response.json();
+                        if (data.assessments && data.assessments.length > 0) {
+                            this.recentAssessments = data.assessments.map(a => {
+                                const ts = a.timestamp ? new Date(a.timestamp) : new Date();
+                                const timeStr = ts.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+                                return {
+                                    time: timeStr,
+                                    mother: a.mother_name || 'Unknown',
+                                    risk: (a.risk_level || 'unknown').toUpperCase(),
+                                    hb: a.hemoglobin || '-',
+                                    bp: (a.bp_systolic && a.bp_diastolic) ? `${a.bp_systolic}/${a.bp_diastolic}` : '-',
+                                    action: a.action_taken || '-'
+                                };
+                            });
+                        }
+                        // else keep demo data as fallback
+                    } catch (err) {
+                        console.warn('Could not load recent assessments, using demo data:', err);
+                    }
+                },
+
+                animateDemoStats() {
                     const target = 147;
                     const duration = 1500;
                     const startTime = Date.now();
@@ -448,12 +504,6 @@
                         }
                     };
                     requestAnimationFrame(tick);
-                },
-
-                startAutoIncrement() {
-                    setInterval(() => {
-                        this.stats.totalAssessments++;
-                    }, 30000);
                 },
 
                 async fetchFacilities() {

@@ -13,7 +13,8 @@ from app.engines.risk_scoring import RiskScoringEngine
 from app.engines.referral_routing import ReferralRoutingEngine
 from app.engines.anemia_prediction import AnemiaPredictionEngine
 from app.engines.real_facilities import RealFacilityFinder
-from app.api.v1.routes import router as v1_router, set_engines, set_real_facilities
+from app.api.v1.routes import router as v1_router, set_engines, set_real_facilities, set_assessment_store
+from app.persistence import AssessmentStore
 from app.config import get_settings
 
 # Configure logging
@@ -63,6 +64,11 @@ async def lifespan(app: FastAPI):
         anemia_engine._loaded = True
 
     set_engines(risk_engine, referral_engine, anemia_engine)
+
+    # Initialize assessment persistence
+    assessment_store = AssessmentStore()
+    set_assessment_store(assessment_store)
+    logger.info("Assessment persistence store initialized.")
 
     global real_facility_finder
     real_facility_finder = RealFacilityFinder(
