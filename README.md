@@ -267,7 +267,7 @@ Voice input available in 12 Indian languages. No typing needed.
 
 **Research-backed risk model**: Multiplicative relative risk model (medical standard) with all 12 risk factor weights cross-validated against 5 independent data sources. Every weight falls within published confidence intervals.
 
-**Proven foundations**: Bayesian conjugate priors, obstetric risk factors, Three Delays framework (validated 50+ countries), human-in-the-loop clinical review (India Telemedicine Practice Guidelines 2020)
+**Established foundations**: Bayesian conjugate priors, obstetric risk factors, Three Delays framework (validated 50+ countries), human-in-the-loop clinical review (India Telemedicine Practice Guidelines 2020)
 
 **Pending field validation**: Risk threshold calibration against real Indian birth outcomes, ASHA adoption measurement, and MMR reduction via 18-month cluster-randomized controlled trial.
 
