@@ -74,16 +74,57 @@ class RealFacilityFinder:
                 best_state = state
         return best_state
 
+    async def _reverse_geocode_district(self, lat: float, lon: float) -> str:
+        """Reverse geocode lat/lon to get the district name."""
+        if not self._google_maps_key:
+            return ""
+        cache_key = f"rev_{lat:.2f}_{lon:.2f}"
+        if cache_key in self._geocode_cache:
+            return self._geocode_cache[cache_key][0] or ""
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                resp = await client.get(GOOGLE_GEOCODE_URL, params={
+                    "latlng": f"{lat},{lon}",
+                    "key": self._google_maps_key,
+                    "result_type": "administrative_area_level_3|locality",
+                })
+                if resp.status_code == 200:
+                    data = resp.json()
+                    if data.get("status") == "OK" and data.get("results"):
+                        for component in data["results"][0].get("address_components", []):
+                            if "administrative_area_level_3" in component.get("types", []):
+                                district = component["long_name"]
+                                self._geocode_cache[cache_key] = (district, None)
+                                return district
+                            if "locality" in component.get("types", []):
+                                district = component["long_name"]
+                                self._geocode_cache[cache_key] = (district, None)
+                                return district
+        except Exception as e:
+            logger.debug(f"Reverse geocode failed: {e}")
+        self._geocode_cache[cache_key] = ("", None)
+        return ""
+
     @staticmethod
     def _make_navigation_url(name: str, address: str, pincode: str,
+                              district: str = "", state: str = "",
                               lat: float = None, lon: float = None) -> str:
         if lat and lon:
+            # Coordinate-based: always works, most reliable
             return f"https://www.google.com/maps/dir/?api=1&destination={lat},{lon}"
-        query = f"{name}, {address}" if address else name
+        # Fallback: use Google Maps search with structured query
+        parts = [name]
+        if address:
+            parts.append(address)
+        if district:
+            parts.append(district)
+        if state:
+            parts.append(state)
+        parts.append("India")
         if pincode:
-            query += f", {pincode}"
-        query += ", India"
-        return f"https://www.google.com/maps/dir/?api=1&destination={urllib.parse.quote(query)}"
+            parts.append(pincode)
+        query = ", ".join(parts)
+        return f"https://www.google.com/maps/search/?api=1&query={urllib.parse.quote(query)}"
 
     async def _geocode_batch(self, facilities: list[dict], state: str,
                               max_count: int = 20) -> int:
@@ -151,21 +192,36 @@ class RealFacilityFinder:
             fc = {**f, "state": state, "source": "data.gov.in"}
             fc["navigation_url"] = self._make_navigation_url(
                 fc["name"], fc.get("address", ""),
-                fc.get("pincode", ""),
+                fc.get("pincode", ""), fc.get("district", ""), state,
                 fc.get("latitude"), fc.get("longitude"))
             facilities.append(fc)
 
-        # Geocode missing coordinates (up to 20 per request to stay in free tier)
-        geocoded = await self._geocode_batch(facilities, state, max_count=20)
+        # Reverse geocode user location to find their district
+        # so we prioritize geocoding nearby facilities first
+        user_district = await self._reverse_geocode_district(lat, lon)
+        if user_district:
+            logger.info(f"User district: {user_district}")
+            facilities.sort(key=lambda f: (
+                0 if user_district.lower() in f.get("district", "").lower()
+                     or f.get("district", "").lower() in user_district.lower() else 1,
+                f.get("name", "")
+            ))
+
+        # Geocode missing coordinates (up to 30 per request)
+        geocoded = await self._geocode_batch(facilities, state, max_count=30)
         if geocoded > 0:
-            # Update navigation URLs with new coordinates
+            # Update navigation URLs with geocoded coordinates
             for f in facilities:
                 if f.get("latitude"):
                     f["navigation_url"] = self._make_navigation_url(
                         f["name"], f.get("address", ""),
-                        f.get("pincode", ""),
+                        f.get("pincode", ""), f.get("district", ""), state,
                         f["latitude"], f["longitude"])
             logger.info(f"Geocoded {geocoded} facilities in {state}")
+
+        # Debug: count how many have coords after geocoding
+        with_coords = sum(1 for f in facilities if f.get("latitude") and f.get("longitude"))
+        logger.info(f"After geocoding: {with_coords}/{len(facilities)} have coordinates")
 
         # Compute distances and filter
         results = []
