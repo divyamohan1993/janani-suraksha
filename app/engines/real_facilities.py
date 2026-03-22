@@ -1,58 +1,40 @@
-"""Real facility data from data.gov.in + Google Maps geocoding for navigation."""
+"""Real facility finder using Google Places API for accurate nearby hospitals."""
 import json
 import math
 import logging
 from pathlib import Path
-from typing import Optional
 import urllib.parse
 import httpx
 
 logger = logging.getLogger("janani.facilities")
 
-GOOGLE_GEOCODE_URL = "https://maps.googleapis.com/maps/api/geocode/json"
-
-# State centroids for lat/lon → state lookup
-INDIAN_STATES = [
-    (28.6, 77.2, "Delhi"), (26.85, 80.95, "Uttar Pradesh"),
-    (27.57, 80.68, "Uttar Pradesh"), (25.6, 85.1, "Bihar"),
-    (22.6, 88.4, "West Bengal"), (19.1, 73.0, "Maharashtra"),
-    (13.0, 77.6, "Karnataka"), (26.9, 75.8, "Rajasthan"),
-    (23.3, 77.4, "Madhya Pradesh"), (11.0, 76.9, "Tamil Nadu"),
-    (17.4, 78.5, "Telangana"), (10.9, 76.3, "Kerala"),
-    (21.2, 81.1, "Chhattisgarh"), (23.0, 72.6, "Gujarat"),
-    (20.3, 85.8, "Odisha"), (30.7, 76.8, "Punjab"),
-    (26.1, 91.7, "Assam"), (23.6, 87.0, "Jharkhand"),
-    (15.4, 74.0, "Goa"), (31.1, 77.2, "Himachal Pradesh"),
-    (34.1, 74.8, "Jammu and Kashmir"), (30.3, 78.0, "Uttarakhand"),
-    (25.5, 82.0, "Uttar Pradesh"), (27.2, 79.0, "Uttar Pradesh"),
-    (26.4, 80.3, "Uttar Pradesh"), (15.3, 75.7, "Karnataka"),
-    (22.3, 71.2, "Gujarat"), (21.1, 79.1, "Maharashtra"),
-    (30.9, 75.9, "Haryana"), (17.0, 82.0, "Andhra Pradesh"),
-]
+PLACES_NEARBY_URL = "https://maps.googleapis.com/maps/api/place/nearbysearch/json"
 
 
 class RealFacilityFinder:
-    """Finds real health facilities from pre-fetched data.gov.in data + Google Maps geocoding."""
+    """Finds real nearby health facilities using Google Places API.
+
+    Primary: Google Places Nearby Search (accurate coordinates, real-time)
+    Fallback: Pre-fetched data.gov.in data (offline, broader coverage)
+    """
 
     def __init__(self, google_maps_key: str = "", data_gov_key: str = ""):
         self._google_maps_key = google_maps_key
         self._data_gov_key = data_gov_key
-        self._facilities: dict[str, list[dict]] = {}
-        self._geocode_cache: dict[str, tuple] = {}
+        self._datagov_facilities: dict[str, list[dict]] = {}
+        self._places_cache: dict[str, list[dict]] = {}
         self._loaded = False
 
     def load(self, path: str) -> None:
-        """Load pre-fetched facility data from JSON file."""
+        """Load pre-fetched data.gov.in facility data as fallback."""
         p = Path(path)
         if p.exists():
             with open(p) as f:
-                self._facilities = json.load(f)
-            total = sum(len(v) for v in self._facilities.values())
-            logger.info(f"Loaded {total} real facilities across "
-                        f"{len(self._facilities)} states from {p.name}")
+                self._datagov_facilities = json.load(f)
+            total = sum(len(v) for v in self._datagov_facilities.values())
+            logger.info(f"Loaded {total} data.gov.in facilities across "
+                        f"{len(self._datagov_facilities)} states (fallback)")
             self._loaded = True
-        else:
-            logger.warning(f"Real facility data not found at {path}")
 
     @staticmethod
     def _haversine(lat1, lon1, lat2, lon2):
@@ -64,187 +46,164 @@ class RealFacilityFinder:
              math.sin(dlon / 2) ** 2)
         return R * 2 * math.asin(math.sqrt(a))
 
+    async def _search_google_places(self, lat: float, lon: float,
+                                      radius_m: int = 25000) -> list[dict]:
+        cache_key = f"{lat:.2f},{lon:.2f},{radius_m}"
+        if cache_key in self._places_cache:
+            return self._places_cache[cache_key]
+
+        if not self._google_maps_key:
+            return []
+
+        facilities = []
+        searches = [
+            {"type": "hospital", "keyword": "maternity hospital district hospital"},
+            {"type": "hospital", "keyword": ""},
+            {"keyword": "PHC primary health centre CHC community health centre"},
+        ]
+
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            for search in searches:
+                try:
+                    params = {
+                        "location": f"{lat},{lon}",
+                        "radius": radius_m,
+                        "key": self._google_maps_key,
+                    }
+                    if search.get("type"):
+                        params["type"] = search["type"]
+                    if search.get("keyword"):
+                        params["keyword"] = search["keyword"]
+
+                    resp = await client.get(PLACES_NEARBY_URL, params=params)
+                    if resp.status_code == 200:
+                        data = resp.json()
+                        if data.get("status") == "OK":
+                            for place in data.get("results", []):
+                                loc = place["geometry"]["location"]
+                                dist = self._haversine(lat, lon, loc["lat"], loc["lng"])
+
+                                # Compute maternity relevance score
+                                name_lower = place["name"].lower()
+                                types = place.get("types", [])
+                                maternity_score = 0
+                                if any(kw in name_lower for kw in ["maternity", "obstetric", "gynae", "women", "mahila", "janani", "mother", "prasuti"]):
+                                    maternity_score = 3
+                                elif any(kw in name_lower for kw in ["district hospital", "civil hospital", "government hospital"]):
+                                    maternity_score = 2
+                                elif "hospital" in types or "hospital" in name_lower:
+                                    maternity_score = 1
+
+                                facilities.append({
+                                    "name": place["name"],
+                                    "category": ", ".join(
+                                        t.replace("_", " ").title()
+                                        for t in types[:2]
+                                        if t not in ("point_of_interest", "establishment")
+                                    ) or "Hospital",
+                                    "address": place.get("vicinity", ""),
+                                    "district": "",
+                                    "state": "",
+                                    "pincode": "",
+                                    "phone": "",
+                                    "rating": place.get("rating"),
+                                    "reviews": place.get("user_ratings_total", 0),
+                                    "open_now": place.get("opening_hours", {}).get("open_now"),
+                                    "latitude": loc["lat"],
+                                    "longitude": loc["lng"],
+                                    "distance_km": round(dist, 1),
+                                    "has_exact_location": True,
+                                    "maternity_score": maternity_score,
+                                    "navigation_url": (
+                                        f"https://www.google.com/maps/dir/?api=1"
+                                        f"&destination={loc['lat']},{loc['lng']}"
+                                        f"&destination_place_id={place.get('place_id', '')}"
+                                    ),
+                                    "source": "google_places",
+                                })
+                except Exception as e:
+                    logger.warning(f"Google Places search failed: {e}")
+
+        # Deduplicate
+        seen = set()
+        unique = []
+        for f in facilities:
+            key = f["name"].lower().strip()
+            if key not in seen:
+                seen.add(key)
+                unique.append(f)
+
+        # Sort: maternity relevance first, then distance
+        unique.sort(key=lambda x: (-x.get("maternity_score", 0), x["distance_km"]))
+
+        self._places_cache[cache_key] = unique[:5]
+        logger.info(f"Google Places: found {len(unique)} facilities, returning top 5 near {lat:.4f},{lon:.4f}")
+        return unique[:5]
+
+    async def find_nearby(self, lat: float, lon: float,
+                           radius_km: float = 25.0) -> list[dict]:
+        """Find nearby real facilities. Uses Google Places API with data.gov.in fallback."""
+        radius_m = int(min(radius_km, 50) * 1000)  # Cap at 50km for Places API
+
+        # Primary: Google Places API (accurate, real-time)
+        facilities = await self._search_google_places(lat, lon, radius_m)
+
+        if facilities:
+            return facilities[:5]
+
+        # Fallback: data.gov.in pre-fetched data
+        logger.info("Google Places returned no results, falling back to data.gov.in")
+        return self._fallback_datagov(lat, lon, radius_km)
+
+    def _fallback_datagov(self, lat: float, lon: float,
+                           radius_km: float) -> list[dict]:
+        """Fallback to data.gov.in when Google Places is unavailable."""
+        state = self._guess_state(lat, lon)
+        raw = self._datagov_facilities.get(state, [])
+        if not raw:
+            return []
+
+        results = []
+        for f in raw:
+            nav_parts = [f["name"]]
+            if f.get("address"):
+                nav_parts.append(f["address"])
+            if f.get("district"):
+                nav_parts.append(f["district"])
+            nav_parts.append(state)
+            nav_parts.append("India")
+            query = ", ".join(nav_parts)
+
+            results.append({
+                **f,
+                "state": state,
+                "source": "data.gov.in",
+                "distance_km": None,
+                "has_exact_location": False,
+                "navigation_url": f"https://www.google.com/maps/search/?api=1&query={urllib.parse.quote(query)}",
+            })
+
+        return results[:30]
+
     def _guess_state(self, lat: float, lon: float) -> str:
+        states = [
+            (28.6, 77.2, "Delhi"), (26.85, 80.95, "Uttar Pradesh"),
+            (25.6, 85.1, "Bihar"), (22.6, 88.4, "West Bengal"),
+            (19.1, 73.0, "Maharashtra"), (13.0, 77.6, "Karnataka"),
+            (26.9, 75.8, "Rajasthan"), (23.3, 77.4, "Madhya Pradesh"),
+            (11.0, 76.9, "Tamil Nadu"), (17.4, 78.5, "Telangana"),
+            (10.9, 76.3, "Kerala"), (23.0, 72.6, "Gujarat"),
+            (20.3, 85.8, "Odisha"), (30.7, 76.8, "Punjab"),
+            (26.1, 91.7, "Assam"), (30.3, 78.0, "Uttarakhand"),
+        ]
         best_dist = float('inf')
         best_state = "Uttar Pradesh"
-        for s_lat, s_lon, state in INDIAN_STATES:
+        for s_lat, s_lon, state in states:
             d = self._haversine(lat, lon, s_lat, s_lon)
             if d < best_dist:
                 best_dist = d
                 best_state = state
         return best_state
-
-    async def _reverse_geocode_district(self, lat: float, lon: float) -> str:
-        """Reverse geocode lat/lon to get the district name."""
-        if not self._google_maps_key:
-            return ""
-        cache_key = f"rev_{lat:.2f}_{lon:.2f}"
-        if cache_key in self._geocode_cache:
-            return self._geocode_cache[cache_key][0] or ""
-        try:
-            async with httpx.AsyncClient(timeout=10.0) as client:
-                resp = await client.get(GOOGLE_GEOCODE_URL, params={
-                    "latlng": f"{lat},{lon}",
-                    "key": self._google_maps_key,
-                    "result_type": "administrative_area_level_3|locality",
-                })
-                if resp.status_code == 200:
-                    data = resp.json()
-                    if data.get("status") == "OK" and data.get("results"):
-                        for component in data["results"][0].get("address_components", []):
-                            if "administrative_area_level_3" in component.get("types", []):
-                                district = component["long_name"]
-                                self._geocode_cache[cache_key] = (district, None)
-                                return district
-                            if "locality" in component.get("types", []):
-                                district = component["long_name"]
-                                self._geocode_cache[cache_key] = (district, None)
-                                return district
-        except Exception as e:
-            logger.debug(f"Reverse geocode failed: {e}")
-        self._geocode_cache[cache_key] = ("", None)
-        return ""
-
-    @staticmethod
-    def _make_navigation_url(name: str, address: str, pincode: str,
-                              district: str = "", state: str = "",
-                              lat: float = None, lon: float = None) -> str:
-        if lat and lon:
-            # Coordinate-based: always works, most reliable
-            return f"https://www.google.com/maps/dir/?api=1&destination={lat},{lon}"
-        # Fallback: use Google Maps search with structured query
-        parts = [name]
-        if address:
-            parts.append(address)
-        if district:
-            parts.append(district)
-        if state:
-            parts.append(state)
-        parts.append("India")
-        if pincode:
-            parts.append(pincode)
-        query = ", ".join(parts)
-        return f"https://www.google.com/maps/search/?api=1&query={urllib.parse.quote(query)}"
-
-    async def _geocode_batch(self, facilities: list[dict], state: str,
-                              max_count: int = 20) -> int:
-        """Geocode facilities missing coordinates using Google Maps API."""
-        if not self._google_maps_key:
-            return 0
-
-        geocoded = 0
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            for f in facilities:
-                if f.get("latitude") or geocoded >= max_count:
-                    continue
-                query = f["name"]
-                if f.get("address"):
-                    query += f", {f['address']}"
-                if f.get("district"):
-                    query += f", {f['district']}"
-                query += f", {state}, India"
-                if f.get("pincode"):
-                    query += f" {f['pincode']}"
-
-                cache_key = query.lower().strip()
-                if cache_key in self._geocode_cache:
-                    lat, lon = self._geocode_cache[cache_key]
-                    if lat:
-                        f["latitude"] = lat
-                        f["longitude"] = lon
-                        geocoded += 1
-                    continue
-
-                try:
-                    resp = await client.get(GOOGLE_GEOCODE_URL, params={
-                        "address": query,
-                        "key": self._google_maps_key,
-                        "region": "in",
-                    })
-                    if resp.status_code == 200:
-                        data = resp.json()
-                        if data.get("status") == "OK" and data.get("results"):
-                            loc = data["results"][0]["geometry"]["location"]
-                            f["latitude"] = loc["lat"]
-                            f["longitude"] = loc["lng"]
-                            self._geocode_cache[cache_key] = (loc["lat"], loc["lng"])
-                            geocoded += 1
-                        else:
-                            self._geocode_cache[cache_key] = (None, None)
-                except Exception as e:
-                    logger.debug(f"Geocode failed for '{query}': {e}")
-
-        return geocoded
-
-    async def find_nearby(self, lat: float, lon: float,
-                           radius_km: float = 50.0) -> list[dict]:
-        """Find nearby real facilities sorted by distance. Includes PHCs, CHCs, hospitals."""
-        state = self._guess_state(lat, lon)
-        raw_facilities = self._facilities.get(state, [])
-
-        if not raw_facilities:
-            logger.warning(f"No facility data for state: {state}")
-            return []
-
-        # Build working copies with navigation URLs
-        facilities = []
-        for f in raw_facilities:
-            fc = {**f, "state": state, "source": "data.gov.in"}
-            fc["navigation_url"] = self._make_navigation_url(
-                fc["name"], fc.get("address", ""),
-                fc.get("pincode", ""), fc.get("district", ""), state,
-                fc.get("latitude"), fc.get("longitude"))
-            facilities.append(fc)
-
-        # Reverse geocode user location to find their district
-        # so we prioritize geocoding nearby facilities first
-        user_district = await self._reverse_geocode_district(lat, lon)
-        if user_district:
-            logger.info(f"User district: {user_district}")
-            facilities.sort(key=lambda f: (
-                0 if user_district.lower() in f.get("district", "").lower()
-                     or f.get("district", "").lower() in user_district.lower() else 1,
-                f.get("name", "")
-            ))
-
-        # Geocode missing coordinates (up to 30 per request)
-        geocoded = await self._geocode_batch(facilities, state, max_count=30)
-        if geocoded > 0:
-            # Update navigation URLs with geocoded coordinates
-            for f in facilities:
-                if f.get("latitude"):
-                    f["navigation_url"] = self._make_navigation_url(
-                        f["name"], f.get("address", ""),
-                        f.get("pincode", ""), f.get("district", ""), state,
-                        f["latitude"], f["longitude"])
-            logger.info(f"Geocoded {geocoded} facilities in {state}")
-
-        # Debug: count how many have coords after geocoding
-        with_coords = sum(1 for f in facilities if f.get("latitude") and f.get("longitude"))
-        logger.info(f"After geocoding: {with_coords}/{len(facilities)} have coordinates")
-
-        # Compute distances and filter
-        results = []
-        for f in facilities:
-            if f.get("latitude") and f.get("longitude"):
-                dist = self._haversine(lat, lon, f["latitude"], f["longitude"])
-                f_copy = {**f, "distance_km": round(dist, 1),
-                          "has_exact_location": True}
-            else:
-                f_copy = {**f, "distance_km": None,
-                          "has_exact_location": False}
-
-            if f_copy["distance_km"] is None or f_copy["distance_km"] <= radius_km:
-                results.append(f_copy)
-
-        exact = sorted(
-            [r for r in results if r["has_exact_location"]],
-            key=lambda x: x["distance_km"])
-        inexact = sorted(
-            [r for r in results if not r["has_exact_location"]],
-            key=lambda x: x["name"])
-
-        return exact + inexact[:30]
 
     @property
     def is_loaded(self) -> bool:
@@ -252,4 +211,4 @@ class RealFacilityFinder:
 
     @property
     def total_facilities(self) -> int:
-        return sum(len(v) for v in self._facilities.values())
+        return sum(len(v) for v in self._datagov_facilities.values())

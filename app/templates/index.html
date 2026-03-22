@@ -266,13 +266,13 @@
                                 <label for="latitude" class="block text-sm font-medium text-gray-700 mb-1">Latitude</label>
                                 <input type="number" id="latitude" x-model.number="form.latitude" step="any" min="-90" max="90"
                                     class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-saffron focus:border-saffron transition"
-                                    placeholder="27.57">
+                                    placeholder="Latitude">
                             </div>
                             <div>
                                 <label for="longitude" class="block text-sm font-medium text-gray-700 mb-1">Longitude</label>
                                 <input type="number" id="longitude" x-model.number="form.longitude" step="any" min="-180" max="180"
                                     class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-saffron focus:border-saffron transition"
-                                    placeholder="80.68">
+                                    placeholder="Longitude">
                             </div>
                         </div>
                         <div class="flex items-center gap-3 mt-3">
@@ -283,7 +283,7 @@
                                 <svg x-show="geolocating" class="animate-spin w-4 h-4 mr-1.5" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
                                 <span x-text="geolocating ? 'Detecting...' : 'Use My Location'"></span>
                             </button>
-                            <p class="text-xs text-gray-400">Default: Sitapur, UP (27.57, 80.68)</p>
+                            <p class="text-xs text-gray-400">Click 'Use My Location' to auto-detect</p>
                         </div>
                     </fieldset>
 
@@ -595,7 +595,7 @@
 
                             <!-- Results list -->
                             <div class="space-y-3 mt-2" x-show="nearbyHospitals.length > 0">
-                                <template x-for="(hosp, idx) in nearbyHospitals.slice(0, 10)" :key="idx">
+                                <template x-for="(hosp, idx) in nearbyHospitals.slice(0, 5)" :key="idx">
                                     <div class="border border-gray-200 rounded-lg p-3 hover:bg-gray-50 transition">
                                         <div class="flex items-start justify-between gap-2">
                                             <div class="flex-1 min-w-0">
@@ -691,8 +691,8 @@
                     ifa_compliance: 50,
                     dietary_score: 50,
                     previous_anemia: false,
-                    latitude: 27.57,
-                    longitude: 80.68
+                    latitude: null,
+                    longitude: null
                 },
 
                 loadDemo() {
@@ -711,8 +711,8 @@
                         ifa_compliance: 60,
                         dietary_score: 50,
                         previous_anemia: false,
-                        latitude: 27.57,
-                        longitude: 80.68
+                        latitude: null,
+                        longitude: null
                     };
                     this.results = null;
                     this.error = null;
@@ -735,8 +735,8 @@
                         ifa_compliance: 50,
                         dietary_score: 50,
                         previous_anemia: false,
-                        latitude: 27.57,
-                        longitude: 80.68
+                        latitude: null,
+                        longitude: null
                     };
                     this.results = null;
                     this.error = null;
@@ -769,8 +769,13 @@
                     this.nearbyLoading = true;
                     this.nearbyError = null;
                     this.nearbyHospitals = [];
-                    const lat = this.form.latitude || 27.57;
-                    const lon = this.form.longitude || 80.68;
+                    const lat = this.form.latitude;
+                    const lon = this.form.longitude;
+                    if (!lat || !lon) {
+                        this.nearbyLoading = false;
+                        this.nearbyError = "Please click 'Use My Location' or enter latitude/longitude to find nearby hospitals.";
+                        return;
+                    }
                     try {
                         const resp = await fetch(`/api/v1/nearby-facilities?lat=${lat}&lon=${lon}&radius_km=50`);
                         if (!resp.ok) throw new Error('Failed to fetch nearby facilities');

@@ -78,7 +78,7 @@
         <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-3">
             <div>
                 <h2 class="text-2xl font-bold text-gray-800">District Health Officer Dashboard</h2>
-                <p class="text-gray-500 text-sm mt-1">Sitapur District, Uttar Pradesh &mdash; Real-time Monitoring</p>
+                <p class="text-gray-500 text-sm mt-1">Your District &mdash; Real-time Monitoring</p>
             </div>
             <div class="text-sm text-gray-500">
                 <span x-text="new Date().toLocaleDateString('en-IN', {weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'})"></span>
@@ -200,7 +200,7 @@
                 <!-- District Stat -->
                 <div class="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-4">
                     <div class="flex items-center justify-between mb-2">
-                        <span class="text-sm font-medium text-orange-800">Sitapur District</span>
+                        <span class="text-sm font-medium text-orange-800">District Average</span>
                         <span class="text-lg font-black text-orange-700">61.8%</span>
                     </div>
                     <div class="w-full bg-orange-100 rounded-full h-4 overflow-hidden">
@@ -238,7 +238,7 @@
             <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 gap-2">
                 <div>
                     <h3 class="text-lg font-semibold text-gray-800">Health Facilities</h3>
-                    <p class="text-xs text-gray-500">Sitapur District, Uttar Pradesh — Real facility data from data.gov.in</p>
+                    <p class="text-xs text-gray-500">Nearby facilities from Google Maps</p>
                 </div>
                 <div class="bg-green-50 border border-green-200 rounded-lg px-3 py-2 text-xs text-green-700">
                     <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>
@@ -366,15 +366,34 @@
 
     <script>
         function initMap() {
-            const sitapur = { lat: 27.57, lng: 80.68 };
+            const defaultCenter = { lat: 20.5937, lng: 78.9629 };
             const map = new google.maps.Map(document.getElementById('map'), {
-                zoom: 10,
-                center: sitapur,
+                zoom: 5,
+                center: defaultCenter,
                 mapTypeId: 'roadmap'
             });
 
-            // Fetch real facilities and add markers
-            fetch('/api/v1/nearby-facilities?lat=27.57&lon=80.68&radius_km=50')
+            // Use browser geolocation for map center and facility fetch
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    function(position) {
+                        const userLat = position.coords.latitude;
+                        const userLng = position.coords.longitude;
+                        map.setCenter({ lat: userLat, lng: userLng });
+                        map.setZoom(10);
+                        fetchAndShowFacilities(userLat, userLng);
+                    },
+                    function() {
+                        // Geolocation failed, use center of India
+                        fetchAndShowFacilities(defaultCenter.lat, defaultCenter.lng);
+                    }
+                );
+            } else {
+                fetchAndShowFacilities(defaultCenter.lat, defaultCenter.lng);
+            }
+
+            function fetchAndShowFacilities(lat, lng) {
+            fetch(`/api/v1/nearby-facilities?lat=${lat}&lon=${lng}&radius_km=50`)
                 .then(r => r.json())
                 .then(data => {
                     (data.facilities || []).forEach(f => {
@@ -505,11 +524,17 @@
                     this.facilitiesLoading = true;
                     this.facilitiesError = null;
                     try {
-                        // Fetch real facilities from data.gov.in via our API
-                        const response = await fetch('/api/v1/nearby-facilities?lat=27.57&lon=80.68&radius_km=50');
+                        // Use browser geolocation to fetch nearby facilities
+                        const pos = await new Promise((resolve, reject) => {
+                            if (!navigator.geolocation) return reject(new Error('No geolocation'));
+                            navigator.geolocation.getCurrentPosition(resolve, reject);
+                        });
+                        const lat = pos.coords.latitude;
+                        const lon = pos.coords.longitude;
+                        const response = await fetch(`/api/v1/nearby-facilities?lat=${lat}&lon=${lon}&radius_km=50`);
                         if (!response.ok) throw new Error('Failed to load facilities');
                         const data = await response.json();
-                        this.realFacilities = (data.facilities || []).slice(0, 20);
+                        this.realFacilities = (data.facilities || []).slice(0, 5);
                         // Also keep legacy format for compatibility
                         this.facilities = this.realFacilities.map(f => ({
                             name: f.name,
@@ -519,17 +544,9 @@
                             blood_bank: 'unknown'
                         }));
                     } catch (err) {
-                        this.facilitiesError = 'Could not load real facility data. Showing default data.';
+                        this.facilitiesError = "Click 'Use My Location' on the assessment page to find nearby facilities.";
                         this.realFacilities = [];
-                        // Fallback demo data
-                        this.facilities = [
-                            { name: 'Sitapur District Hospital', type: 'District Hospital', capabilities: ['Emergency C-Section', 'Blood Transfusion', 'NICU', 'Ultrasound'], specialist: true, blood_bank: 'available' },
-                            { name: 'Laharpur CHC', type: 'CHC', capabilities: ['Normal Delivery', 'Basic EmOC', 'Ultrasound'], specialist: true, blood_bank: 'limited' },
-                            { name: 'Misrikh CHC', type: 'CHC', capabilities: ['Normal Delivery', 'Basic EmOC'], specialist: false, blood_bank: 'unavailable' },
-                            { name: 'Biswan CHC', type: 'CHC', capabilities: ['Normal Delivery', 'Stabilization', 'Ultrasound'], specialist: true, blood_bank: 'limited' },
-                            { name: 'Mahmoodabad PHC', type: 'PHC', capabilities: ['ANC Check-up', 'Stabilization', 'Referral'], specialist: false, blood_bank: 'unavailable' },
-                            { name: 'Sidhauli CHC', type: 'CHC', capabilities: ['Normal Delivery', 'Basic EmOC'], specialist: false, blood_bank: 'unavailable' }
-                        ];
+                        this.facilities = [];
                     } finally {
                         this.facilitiesLoading = false;
                     }
