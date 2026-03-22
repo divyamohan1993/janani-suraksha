@@ -4,10 +4,11 @@ from typing import Optional
 
 
 class ReferralRoutingEngine:
-    """O(1) emergency referral routing via precomputed facility-capability shortest-path trees.
+    """O(1) emergency referral routing via precomputed facility-capability spatial index.
 
-    Models health facility network as directed weighted graph. Precomputed Dijkstra
-    shortest-path trees enable instant optimal facility recommendation.
+    Precomputed nearest-facility lookup tables per capability level, using haversine
+    distance on a 0.1-degree grid (~11km cells). Grid-key lookup enables instant
+    optimal facility recommendation.
     """
 
     # Capability levels (hierarchical)

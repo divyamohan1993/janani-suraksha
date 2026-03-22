@@ -110,6 +110,20 @@ class AssessmentResult(BaseModel):
     recommendations: list[str]
 
 
+class OutcomeRecord(BaseModel):
+    """Record a birth outcome for Bayesian posterior updating."""
+    age: int = Field(ge=12, le=55)
+    parity: int = Field(ge=0, le=15)
+    hemoglobin: float = Field(ge=3.0, le=20.0)
+    bp_systolic: int = Field(ge=60, le=250)
+    bp_diastolic: int = Field(ge=30, le=160)
+    gestational_weeks: int = Field(ge=1, le=42)
+    height_cm: float = Field(ge=100, le=220)
+    weight_kg: float = Field(ge=25, le=200)
+    complication_history: ComplicationHistory
+    adverse_outcome: bool = Field(description="True if adverse maternal outcome occurred")
+
+
 class HealthCheck(BaseModel):
     status: str
     version: str

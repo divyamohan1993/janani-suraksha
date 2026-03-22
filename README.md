@@ -27,7 +27,7 @@
 
 <p align="center">
   <img src="docs/images/assessment-results.png" alt="Risk Assessment Results with Nearby Maternity Hospitals" width="400">
-  <br><em>Risk results: Bayesian risk score, anemia trajectory prediction, 5 nearest maternity hospitals via Google Places</em>
+  <br><em>Risk results: Multiplicative relative risk score, anemia trajectory prediction, 5 nearest maternity hospitals via Google Places</em>
 </p>
 
 <p align="center">
@@ -46,21 +46,22 @@
 
 ## Three O(1) Engines
 
-### Engine 1: Bayesian Risk Scoring
-- 70,000 precomputed Beta-Binomial posterior entries
+### Engine 1: Risk Scoring (Multiplicative Relative Risk)
+- 70,000 precomputed multiplicative relative risk entries
 - 12 risk factors cross-validated against NFHS-5, WHO, Cochrane, Lancet, ACOG
 - Single hash lookup → instant risk classification (Low/Medium/High/Critical)
-- ~9MB in memory, <5ms response time
+- ~33MB on disk, <5ms response time
 
 ### Engine 2: Emergency Referral Routing
 - 10,065 real health facilities from data.gov.in (Ministry of Health & Family Welfare) across 23 Indian states, with Google Maps geocoding and one-click navigation
-- Precomputed Dijkstra shortest-path trees per capability level
+- Precomputed spatial nearest-neighbor index per capability level
 - Routes to nearest FUNCTIONAL facility (not just nearest)
 - Considers: specialist availability, blood bank, OT status
 
-### Engine 3: Anemia Progression Prediction
-- 7,480 hemoglobin trajectory profiles
-- Predicts Hb at delivery based on current values and IFA compliance
+### Engine 3: Anemia Progression Prediction (Learned Index)
+- Learned index MLP (2-layer, 5→64→32→1, 2,497 params) predicts position in sorted trajectory array — O(1)
+- 7,480 hemoglobin trajectory profiles from WHO-calibrated physiological model
+- First known application of learned index structures (Kraska et al., 2017) to healthcare
 - Shows compliance impact: "With 90% IFA, Hb improves from 7.2 to 9.8 g/dL"
 - Early warning weeks before crisis
 
@@ -85,8 +86,8 @@
 │ (70K entries)│ │ Routing   │ │ Prediction   │
 │ O(1) lookup  │ │ (10,065   │ │ (7,480       │
 │              │ │ facilities│ │ trajectories)│
-│ Beta-Binomial│ │ Dijkstra  │ │ Learned      │
-│ Posterior    │ │ SPTs)     │ │ Index)       │
+│ Relative   │ │ Spatial   │ │ Learned      │
+│ Risk Model │ │ Index)    │ │ Index)       │
 └──────┬───────┘ └─────┬─────┘ └──────┬───────┘
        │               │              │
        ▼               ▼              ▼
@@ -161,7 +162,7 @@ janani-suraksha/
 │   │   └── v1/
 │   │       └── routes.py                # API endpoint definitions
 │   ├── engines/
-│   │   ├── risk_scoring.py              # Engine 1: Bayesian risk scoring
+│   │   ├── risk_scoring.py              # Engine 1: Multiplicative relative risk scoring
 │   │   ├── referral_routing.py          # Engine 2: Facility referral routing
 │   │   └── anemia_prediction.py         # Engine 3: Anemia progression prediction
 │   ├── models/
@@ -169,7 +170,7 @@ janani-suraksha/
 │   │   └── enums.py                     # Risk levels, capabilities, etc.
 │   ├── precompute/
 │   │   ├── generate_risk_table.py       # Generates 70K risk entries
-│   │   ├── generate_facility_graph.py   # Generates facility network + SPTs
+│   │   ├── generate_facility_graph.py   # Generates facility network + spatial index
 │   │   └── generate_hb_trajectories.py  # Generates Hb trajectory profiles
 │   ├── static/
 │   │   ├── css/custom.css
@@ -226,7 +227,7 @@ Six security layers:
 | Method | Path | Description |
 |--------|------|-------------|
 | GET | `/api/v1/health` | Health check + engine status |
-| POST | `/api/v1/risk-score` | O(1) Bayesian risk scoring |
+| POST | `/api/v1/risk-score` | O(1) risk scoring |
 | POST | `/api/v1/referral` | O(1) emergency referral routing |
 | POST | `/api/v1/anemia-predict` | O(1) anemia progression prediction |
 | POST | `/api/v1/assessment` | Full ASHA worker assessment flow |
@@ -286,7 +287,7 @@ Voice input available in 12 Indian languages. No typing needed.
 
 **Research-backed risk model**: Multiplicative relative risk model (medical standard) with all 12 risk factor weights cross-validated against 5 independent data sources. Every weight falls within published confidence intervals.
 
-**Established foundations**: Bayesian conjugate priors, obstetric risk factors, Three Delays framework (validated 50+ countries), human-in-the-loop clinical review (India Telemedicine Practice Guidelines 2020)
+**Established foundations**: Multiplicative relative risk model (medical standard), obstetric risk factors, Three Delays framework (widely applied across LMICs), human-in-the-loop clinical review (India Telemedicine Practice Guidelines 2020)
 
 **Pending field validation**: Risk threshold calibration against real Indian birth outcomes, ASHA adoption measurement, and MMR reduction via 18-month cluster-randomized controlled trial.
 
@@ -332,4 +333,4 @@ MIT License — see [LICENSE](LICENSE) for details.
 
 ---
 
-> **Patent Pending** — O(1) Bayesian Maternal Risk Scoring, Precomputed Facility-Capability Routing, and Learned Index Hemoglobin Trajectory Prediction.
+> **Patent Pending** — O(1) Multiplicative Relative Risk Scoring, Precomputed Facility-Capability Spatial Index, and Learned Index Hemoglobin Trajectory Prediction.

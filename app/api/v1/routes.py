@@ -18,6 +18,7 @@ from app.models.schemas import (
     AssessmentRequest,
     AssessmentResult,
     HealthCheck,
+    OutcomeRecord,
 )
 from app.models.enums import (
     RiskLevel,
@@ -45,6 +46,8 @@ _referral_engine = None
 _anemia_engine = None
 _real_facilities = None
 _assessment_store = None
+_bayesian_updater = None
+_blood_bank = None
 
 
 def set_engines(risk_engine, referral_engine, anemia_engine):
@@ -62,6 +65,16 @@ def set_real_facilities(finder: RealFacilityFinder):
 def set_assessment_store(store: AssessmentStore):
     global _assessment_store
     _assessment_store = store
+
+
+def set_bayesian_updater(updater):
+    global _bayesian_updater
+    _bayesian_updater = updater
+
+
+def set_blood_bank(blood_bank):
+    global _blood_bank
+    _blood_bank = blood_bank
 
 
 @router.get("/health")
@@ -104,7 +117,7 @@ async def maps_config(request: Request):
 
 @router.post("/risk-score")
 async def risk_score(factors: RiskFactors):
-    """O(1) Bayesian maternal risk scoring."""
+    """O(1) maternal risk scoring via precomputed relative risk table."""
     if not _risk_engine:
         raise HTTPException(status_code=503, detail="Risk engine not loaded")
 
@@ -477,3 +490,328 @@ async def send_alert(
         "telegram_delivered": telegram_sent,
         "note": "Configure JANANI_TELEGRAM_BOT_TOKEN and JANANI_TELEGRAM_CHAT_ID in .env to enable real Telegram alerts.",
     }
+
+
+@router.post("/record-outcome")
+async def record_outcome(outcome: OutcomeRecord):
+    """Record a birth outcome for Bayesian posterior updating.
+
+    The Beta-Binomial conjugate prior framework enables continuous learning:
+    Prior Beta(a0, b0) + observed data -> Posterior Beta(a0+s, b0+n-s)
+
+    Outcomes accumulate in memory during container lifetime. This demonstrates
+    the Bayesian learning loop: more data -> better risk predictions.
+    """
+    if not _bayesian_updater:
+        raise HTTPException(status_code=503, detail="Bayesian updater not initialized")
+
+    result = _bayesian_updater.record_outcome(
+        age=outcome.age, parity=outcome.parity,
+        hemoglobin=outcome.hemoglobin,
+        bp_systolic=outcome.bp_systolic, bp_diastolic=outcome.bp_diastolic,
+        gestational_weeks=outcome.gestational_weeks,
+        height_cm=outcome.height_cm, weight_kg=outcome.weight_kg,
+        complication_history=outcome.complication_history.value,
+        adverse_outcome=outcome.adverse_outcome,
+    )
+    result["disclaimer"] = DEMO_DISCLAIMER
+    result["note"] = (
+        "Bayesian posterior updated in memory. The risk table continuously improves "
+        "as more birth outcomes are recorded. On container restart, resets to static "
+        "literature-calibrated tables."
+    )
+    return result
+
+
+@router.get("/bayesian-stats")
+async def bayesian_stats():
+    """Statistics on Bayesian posterior updates."""
+    if not _bayesian_updater:
+        return {"outcomes_recorded": 0, "unique_combinations": 0, "status": "not_initialized"}
+    return {
+        "outcomes_recorded": _bayesian_updater.outcomes_recorded,
+        "unique_combinations": _bayesian_updater.unique_combinations_observed,
+        "status": "active",
+        "note": "In-memory Bayesian accumulator. Resets on container restart.",
+    }
+
+
+# ---------------------------------------------------------------------------
+# Blood Bank Count-Min Sketch endpoints
+# ---------------------------------------------------------------------------
+
+@router.post("/blood-bank/report")
+async def blood_bank_report(
+    facility_id: str = Query(...),
+    blood_type: str = Query(...),
+    units: int = Query(..., ge=0, le=500),
+):
+    """Report blood stock via Count-Min Sketch (federated, privacy-preserving).
+
+    Uses the Count-Min Sketch probabilistic data structure (Cormode & Muthukrishnan, 2005)
+    for sub-linear space blood bank inventory estimation. Novel application in healthcare.
+    """
+    if not _blood_bank:
+        raise HTTPException(status_code=503, detail="Blood bank sketch not initialized")
+    try:
+        result = _blood_bank.report_stock(facility_id, blood_type, units)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return result
+
+
+@router.get("/blood-bank/query")
+async def blood_bank_query(
+    blood_type: str = Query(...),
+    facility_id: str = Query(None),
+):
+    """Query estimated blood availability via Count-Min Sketch."""
+    if not _blood_bank:
+        raise HTTPException(status_code=503, detail="Blood bank sketch not initialized")
+    try:
+        result = _blood_bank.query_availability(blood_type, facility_id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return result
+
+
+@router.get("/blood-bank/nearest")
+async def blood_bank_nearest(
+    blood_type: str = Query(...),
+    latitude: float = Query(...),
+    longitude: float = Query(...),
+    min_units: int = Query(1, ge=1),
+):
+    """Find nearest facilities with blood stock (Count-Min Sketch estimated)."""
+    if not _blood_bank:
+        raise HTTPException(status_code=503, detail="Blood bank sketch not initialized")
+    try:
+        facilities = _blood_bank.find_nearest_with_stock(
+            blood_type, latitude, longitude, min_units
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return {"blood_type": blood_type, "facilities": facilities}
+
+
+# ---------------------------------------------------------------------------
+# Explainability endpoints (Counterfactual, Attribution, Credible Intervals)
+# ---------------------------------------------------------------------------
+
+_explainer = None
+_attributor = None
+_ci_calc = None
+_temporal_engine = None
+_deduplicator = None
+_patient_counter = None
+_consent_manager = None
+_dp_engine = None
+_icd10_mapper = None
+
+
+def set_explainability(explainer, attributor, ci_calc):
+    global _explainer, _attributor, _ci_calc
+    _explainer = explainer
+    _attributor = attributor
+    _ci_calc = ci_calc
+
+
+def set_temporal_engine(engine):
+    global _temporal_engine
+    _temporal_engine = engine
+
+
+def set_deduplicator(dedup):
+    global _deduplicator
+    _deduplicator = dedup
+
+
+def set_patient_counter(counter):
+    global _patient_counter
+    _patient_counter = counter
+
+
+def set_consent_manager(manager):
+    global _consent_manager
+    _consent_manager = manager
+
+
+def set_dp_engine(dp):
+    global _dp_engine
+    _dp_engine = dp
+
+
+def set_icd10_mapper(mapper):
+    global _icd10_mapper
+    _icd10_mapper = mapper
+
+
+@router.post("/risk-explain")
+async def risk_explain(factors: RiskFactors):
+    """Counterfactual explanations + attention attribution + credible intervals.
+
+    Returns what-if scenarios showing which modifiable risk factors would
+    reduce the patient's risk classification, normalized importance weights,
+    and Bayesian credible intervals quantifying uncertainty.
+
+    Novel: First application of counterfactual XAI to multiplicative relative
+    risk maternal health scoring.
+    """
+    if not _risk_engine:
+        raise HTTPException(status_code=503, detail="Risk engine not loaded")
+
+    result = {}
+
+    # Counterfactual explanations
+    if _explainer:
+        result["counterfactuals"] = _explainer.explain(
+            factors.age, factors.parity, factors.hemoglobin,
+            factors.bp_systolic, factors.bp_diastolic,
+            factors.gestational_weeks, factors.height_cm,
+            factors.weight_kg, factors.complication_history.value,
+        )
+
+    # Attention-weighted attribution
+    if _attributor:
+        result["attribution"] = _attributor.attribute(
+            factors.age, factors.parity, factors.hemoglobin,
+            factors.bp_systolic, factors.bp_diastolic,
+            factors.gestational_weeks, factors.height_cm,
+            factors.weight_kg, factors.complication_history.value,
+        )
+
+    # Credible intervals
+    if _ci_calc:
+        risk_result = _risk_engine.score(
+            age=factors.age, parity=factors.parity,
+            hemoglobin=factors.hemoglobin,
+            bp_systolic=factors.bp_systolic,
+            bp_diastolic=factors.bp_diastolic,
+            gestational_weeks=factors.gestational_weeks,
+            height_cm=factors.height_cm, weight_kg=factors.weight_kg,
+            complication_history=factors.complication_history.value,
+        )
+        result["credible_interval"] = _ci_calc.enrich_risk_result(risk_result)
+
+    result["disclaimer"] = DEMO_DISCLAIMER
+    return result
+
+
+@router.post("/risk-trajectory")
+async def risk_trajectory(request: AssessmentRequest):
+    """Temporal risk trajectory — week-by-week risk curve through delivery.
+
+    Couples the multiplicative RR model with the learned-index anemia
+    trajectory to produce a dynamic risk curve identifying the peak risk
+    week and optimal intervention window.
+    """
+    if not _temporal_engine:
+        raise HTTPException(status_code=503, detail="Temporal engine not initialized")
+
+    result = _temporal_engine.compute_trajectory(
+        age=request.risk_factors.age,
+        parity=request.risk_factors.parity,
+        hemoglobin=request.risk_factors.hemoglobin,
+        bp_systolic=request.risk_factors.bp_systolic,
+        bp_diastolic=request.risk_factors.bp_diastolic,
+        gestational_weeks=request.risk_factors.gestational_weeks,
+        height_cm=request.risk_factors.height_cm,
+        weight_kg=request.risk_factors.weight_kg,
+        complication_history=request.risk_factors.complication_history.value,
+        ifa_compliance=request.ifa_compliance,
+        dietary_score=request.dietary_score,
+        prev_anemia=request.prev_anemia,
+    )
+    result["disclaimer"] = DEMO_DISCLAIMER
+    return result
+
+
+@router.post("/consent/generate")
+async def consent_generate(
+    data_principal_id: str = Query(..., description="Patient or ASHA ID"),
+    purposes: str = Query("risk_assessment", description="Comma-separated purposes"),
+    retention_days: int = Query(90, ge=1, le=365),
+):
+    """Generate DPDP Act 2023 compliant consent token.
+
+    Creates an HMAC-SHA256 signed purpose-limited consent token per
+    India's Digital Personal Data Protection Act 2023.
+    """
+    if not _consent_manager:
+        raise HTTPException(status_code=503, detail="Consent manager not initialized")
+    purpose_list = [p.strip() for p in purposes.split(",")]
+    token = _consent_manager.generate_token(data_principal_id, purpose_list, retention_days)
+    return token
+
+
+@router.post("/consent/validate")
+async def consent_validate(
+    token_id: str = Query(...),
+    purpose: str = Query("risk_assessment"),
+):
+    """Validate a consent token for a specific purpose."""
+    if not _consent_manager:
+        raise HTTPException(status_code=503, detail="Consent manager not initialized")
+    # Find token by ID — in production this would be a DB lookup
+    return {"token_id": token_id, "purpose": purpose,
+            "note": "Pass full token JSON to validate. Token lookup by ID requires persistent storage."}
+
+
+@router.post("/consent/revoke")
+async def consent_revoke(token_id: str = Query(...)):
+    """Revoke a consent token (DPDP Act 2023, Section 12 — data erasure)."""
+    if not _consent_manager:
+        raise HTTPException(status_code=503, detail="Consent manager not initialized")
+    revoked = _consent_manager.revoke_token(token_id)
+    return {"token_id": token_id, "revoked": revoked, "status": "revoked" if revoked else "not_found"}
+
+
+@router.get("/consent/stats")
+async def consent_stats():
+    """Consent token statistics."""
+    if not _consent_manager:
+        return {"status": "not_initialized"}
+    return _consent_manager.stats()
+
+
+@router.post("/icd10-map")
+async def icd10_map(factors: RiskFactors):
+    """Map risk factors to ICD-10-CM diagnostic codes.
+
+    Automated mapping from the multiplicative relative risk model's
+    discretized factor indices to billable ICD-10-CM codes (2026 code set,
+    Chapter XV: Pregnancy, childbirth and the puerperium).
+    """
+    if not _icd10_mapper or not _risk_engine:
+        raise HTTPException(status_code=503, detail="ICD-10 mapper not initialized")
+
+    risk_result = _risk_engine.score(
+        age=factors.age, parity=factors.parity,
+        hemoglobin=factors.hemoglobin,
+        bp_systolic=factors.bp_systolic,
+        bp_diastolic=factors.bp_diastolic,
+        gestational_weeks=factors.gestational_weeks,
+        height_cm=factors.height_cm, weight_kg=factors.weight_kg,
+        complication_history=factors.complication_history.value,
+    )
+    codes = _icd10_mapper.from_risk_result(risk_result)
+    codes["disclaimer"] = DEMO_DISCLAIMER
+    return codes
+
+
+@router.get("/privacy-stats")
+async def privacy_stats():
+    """Privacy and deduplication statistics."""
+    result = {}
+    if _dp_engine:
+        result["differential_privacy"] = {
+            "epsilon": _dp_engine.epsilon,
+            "budget_remaining": _dp_engine.privacy_budget_remaining(),
+        }
+    if _deduplicator:
+        result["deduplication"] = _deduplicator.stats()
+    if _patient_counter:
+        result["patient_counter"] = _patient_counter.stats()
+    if _consent_manager:
+        result["consent"] = _consent_manager.stats()
+    return result

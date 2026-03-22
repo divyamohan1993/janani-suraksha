@@ -6,10 +6,10 @@ from typing import Optional
 
 
 class RiskScoringEngine:
-    """O(1) Bayesian maternal risk scoring via precomputed conjugate posterior tables.
+    """O(1) maternal risk scoring via precomputed multiplicative relative risk tables.
 
-    70,000 entries mapping discretized risk factor combinations to Beta-Binomial
-    posterior risk scores. Single hash-indexed lookup at runtime.
+    70,000 entries mapping discretized risk factor combinations to literature-calibrated
+    risk scores. Single hash-indexed lookup at runtime.
 
     Risk weights calibrated from:
     - NFHS-5 (2019-21): National Family Health Survey, 724,115 women
@@ -256,7 +256,7 @@ class RiskScoringEngine:
         bmi_idx: int,
         comp_idx: int,
     ) -> dict:
-        """Compute risk score from Beta-Binomial posterior calibrated on NFHS-5/WHO data.
+        """Compute risk score from multiplicative relative risk model calibrated on NFHS-5/WHO data.
 
         Priors derived from:
         - NFHS-5 (2019-21): 724,115 women sampled, anemia/HTN prevalence
@@ -357,7 +357,7 @@ class RiskScoringEngine:
         # Final risk score = base_rate × combined_rr, capped at 0.95
         risk_score = min(base_rate * combined_rr, 0.95)
 
-        # Convert to Beta parameters for consistency with Bayesian framework
+        # Convert to Beta-like parameters for output format consistency
         # alpha / (alpha + beta) = risk_score, with alpha + beta = 100
         alpha = risk_score * 100
         beta = 100 - alpha

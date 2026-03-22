@@ -1,8 +1,9 @@
-"""Generate precomputed hemoglobin trajectory array and learned index.
+"""Generate precomputed hemoglobin trajectory array and lookup index.
 
 Produces a sorted array of trajectory profiles covering all discretized
 feature combinations, plus an O(1) lookup index mapping feature keys
-to positions in the sorted array.
+to positions in the sorted array. Trajectories are generated from a
+WHO-calibrated physiological model, not from patient data.
 
 Usage:
     python -m app.precompute.generate_hb_trajectories
@@ -71,7 +72,7 @@ def generate() -> None:
         f"Generated {len(keyed_trajectories)} trajectories, expected {EXPECTED_TOTAL}"
     )
 
-    # Step 2: Sort trajectories by predicted_delivery_hb (ascending) for the learned index
+    # Step 2: Sort trajectories by predicted_delivery_hb (ascending) for the lookup index
     keyed_trajectories.sort(key=lambda kp: kp[1]["predicted_delivery_hb"])
 
     # Step 3: Build sorted trajectory array and index
@@ -80,7 +81,17 @@ def generate() -> None:
 
     for pos, (key, profile) in enumerate(keyed_trajectories):
         trajectories.append(profile)
-        index[key] = pos
+        if key not in index:
+            index[key] = pos
+        else:
+            # On collision, keep the trajectory with lower predicted delivery Hb
+            # (more clinically conservative — avoids underestimating anemia risk)
+            existing_hb = trajectories[index[key]]["predicted_delivery_hb"]
+            current_hb = profile["predicted_delivery_hb"]
+            if current_hb < existing_hb:
+                index[key] = pos
+
+    collision_count = EXPECTED_TOTAL - len(index)
 
     # Step 4: Compute statistics
     risk_counter: Counter = Counter()
@@ -143,7 +154,7 @@ def generate() -> None:
         pct = 100.0 * count / len(trajectories)
         print(f"  {urgency:10s}: {count:5d} ({pct:5.1f}%)")
     print()
-    print("Index entries:", len(index))
+    print(f"Index entries: {len(index)} (unique keys from {EXPECTED_TOTAL} total, {collision_count} collisions resolved conservatively)")
     print("Done.")
 
 

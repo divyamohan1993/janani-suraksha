@@ -13,7 +13,21 @@ from app.engines.risk_scoring import RiskScoringEngine
 from app.engines.referral_routing import ReferralRoutingEngine
 from app.engines.anemia_prediction import AnemiaPredictionEngine
 from app.engines.real_facilities import RealFacilityFinder
-from app.api.v1.routes import router as v1_router, set_engines, set_real_facilities, set_assessment_store
+from app.engines.bayesian_updater import BayesianUpdater
+from app.engines.blood_bank_sketch import BloodBankSketch
+from app.engines.risk_explainer import CounterfactualExplainer, AttentionWeightedAttribution, CredibleIntervalCalculator
+from app.engines.temporal_risk import TemporalRiskEngine
+from app.engines.bloom_filter import AssessmentDeduplicator
+from app.engines.hyperloglog import PatientCounter
+from app.engines.consent_manager import ConsentManager
+from app.engines.differential_privacy import DifferentialPrivacy
+from app.engines.icd10_mapper import ICD10Mapper
+from app.api.v1.routes import (
+    router as v1_router, set_engines, set_real_facilities, set_assessment_store,
+    set_bayesian_updater, set_blood_bank, set_explainability, set_temporal_engine,
+    set_deduplicator, set_patient_counter, set_consent_manager, set_dp_engine,
+    set_icd10_mapper,
+)
 from app.persistence import AssessmentStore
 from app.config import get_settings
 
@@ -65,6 +79,49 @@ async def lifespan(app: FastAPI):
 
     set_engines(risk_engine, referral_engine, anemia_engine)
 
+    # Initialize Bayesian posterior updater wrapping risk engine
+    bayesian_updater = BayesianUpdater(risk_engine)
+    set_bayesian_updater(bayesian_updater)
+    logger.info("Bayesian posterior updater initialized (in-memory, resets on restart).")
+
+    # Initialize Blood Bank Count-Min Sketch
+    # Cormode & Muthukrishnan (2005) — width=256, depth=4 gives
+    # error bound e/256 * N ≈ 1.06% of total updates with 98.2% confidence
+    blood_bank = BloodBankSketch(width=256, depth=4)
+
+    # Register all facilities from referral engine into the blood bank network
+    for facility in referral_engine.get_all_facilities():
+        blood_bank.register_facility(
+            facility_id=facility["facility_id"],
+            name=facility["name"],
+            latitude=facility["latitude"],
+            longitude=facility["longitude"],
+            district=facility.get("facility_id", "").split("-")[1] if "-" in facility.get("facility_id", "") else "",
+        )
+
+    # Seed with demo stock data based on facility blood_bank_status
+    import random
+    random.seed(42)  # Deterministic demo data
+    blood_types = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"]
+    # Indian blood type distribution (approx): O+ 36%, B+ 28%, A+ 22%, AB+ 7%
+    # Negative types are ~8% of each positive type
+    stock_weights = {"O+": 1.0, "B+": 0.85, "A+": 0.75, "AB+": 0.5,
+                     "O-": 0.3, "B-": 0.25, "A-": 0.2, "AB-": 0.15}
+    for facility in referral_engine.get_all_facilities():
+        fid = facility["facility_id"]
+        status = facility.get("blood_bank_status", "unavailable")
+        if status == "unavailable":
+            continue
+        for bt in blood_types:
+            base = 20 if status == "available" else 8  # low_stock
+            units = max(0, int(base * stock_weights[bt] + random.randint(-3, 5)))
+            if units > 0:
+                blood_bank.report_stock(fid, bt, units)
+
+    set_blood_bank(blood_bank)
+    logger.info(f"Blood bank CMS initialized: {blood_bank.registered_facilities} facilities, "
+                f"{blood_bank.total_updates} stock reports seeded")
+
     # Initialize assessment persistence
     assessment_store = AssessmentStore()
     set_assessment_store(assessment_store)
@@ -83,6 +140,37 @@ async def lifespan(app: FastAPI):
     set_real_facilities(real_facility_finder)
     logger.info(f"Real facility finder: {real_facility_finder.total_facilities} facilities, "
                 f"Google Maps geocoding: {'enabled' if settings.google_maps_api_key else 'disabled'}")
+    # Initialize explainability engines (Counterfactual, Attribution, Credible Intervals)
+    explainer = CounterfactualExplainer(risk_engine)
+    attributor = AttentionWeightedAttribution(risk_engine)
+    ci_calc = CredibleIntervalCalculator()
+    set_explainability(explainer, attributor, ci_calc)
+    logger.info("Explainability engines initialized (counterfactual, attribution, credible intervals).")
+
+    # Initialize temporal risk trajectory engine
+    temporal_engine = TemporalRiskEngine(risk_engine, anemia_engine)
+    set_temporal_engine(temporal_engine)
+    logger.info("Temporal risk trajectory engine initialized.")
+
+    # Initialize privacy engines
+    consent_manager = ConsentManager()
+    dp_engine = DifferentialPrivacy(epsilon=1.0)
+    set_consent_manager(consent_manager)
+    set_dp_engine(dp_engine)
+    logger.info("Privacy engines initialized (DPDP consent manager, differential privacy epsilon=1.0).")
+
+    # Initialize probabilistic data structures
+    deduplicator = AssessmentDeduplicator(window_hours=24)
+    patient_counter = PatientCounter()
+    set_deduplicator(deduplicator)
+    set_patient_counter(patient_counter)
+    logger.info("Probabilistic DS initialized (Bloom filter dedup, HyperLogLog patient counter).")
+
+    # Initialize ICD-10 mapper
+    icd10_mapper = ICD10Mapper()
+    set_icd10_mapper(icd10_mapper)
+    logger.info("ICD-10-CM mapper initialized (2026 code set, Chapter XV).")
+
     logger.info("All engines ready.")
 
     yield

@@ -62,6 +62,7 @@
     "West Bengal": 103,
     "India": 93
   },
+  "causes_of_death_source": "WHO Global estimates (Say L et al, Lancet Glob Health 2014). For India-specific figures, see README (hemorrhage 47%, sepsis 12%, hypertensive 7% — from nationally representative surveys).",
   "causes_of_death": {
     "hemorrhage": 0.27,
     "sepsis": 0.11,

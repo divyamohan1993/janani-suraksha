@@ -1,7 +1,7 @@
 """Generate synthetic facility network for Sitapur district, Uttar Pradesh.
 
-Produces a realistic health facility hierarchy with precomputed shortest-path
-trees for O(1) referral routing lookups.
+Produces a realistic health facility hierarchy with precomputed spatial nearest-neighbor
+index for O(1) referral routing lookups.
 
 Run as: python -m app.precompute.generate_facility_graph
 """

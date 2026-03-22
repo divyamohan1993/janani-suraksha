@@ -2,18 +2,28 @@ import json
 import math
 from typing import Optional
 
+from app.engines.learned_index import LearnedIndex
+
 
 class AnemiaPredictionEngine:
     """O(1) anemia progression prediction via learned index on hemoglobin trajectories.
 
-    Maps maternal health features to position in sorted array of historical
-    hemoglobin trajectories. Predicts future Hb levels and intervention urgency.
+    Uses a learned index structure (Kraska et al., 2017) — a 2-layer MLP (5→64→32→1)
+    that approximates the CDF of sorted hemoglobin trajectories — to predict the
+    position of the best-matching trajectory from raw continuous features in O(1) time.
+    Local binary search over ±max_error positions refines the match (O(1) bounded).
+
+    Falls back to hash-based discretized lookup or analytical computation when
+    the learned index is not available.
 
     Physiological model calibrated from:
     - WHO 2012: Daily iron and folic acid supplementation guideline
     - Bothwell TH (2000): Iron requirements in pregnancy, Am J Clin Nutr
     - NFHS-5 (2019-21): Anemia prevalence - 52.2% pregnant women anemic
     - WHO: Haemoglobin concentrations for diagnosis of anaemia (2011)
+
+    Learned index reference:
+    - Kraska T et al., "The Case for Learned Index Structures", arXiv:1712.01208 (2017)
     """
 
     # WHO pregnancy hemoglobin thresholds
@@ -26,15 +36,24 @@ class AnemiaPredictionEngine:
     def __init__(self):
         self._trajectories: list[dict] = []
         self._index: dict[str, int] = {}  # feature_key -> position in sorted array
+        self._learned_index: Optional[LearnedIndex] = None
         self._loaded = False
 
     def load(self, path: str) -> None:
-        """Load precomputed trajectory array and learned index."""
+        """Load precomputed trajectory array and lookup index."""
         with open(path) as f:
             data = json.load(f)
         self._trajectories = data["trajectories"]
         self._index = data["index"]
         self._loaded = True
+
+        # Load learned index if available (optional enhancement)
+        learned_index_path = path.replace("hb_trajectories.json", "learned_index_weights.json")
+        try:
+            self._learned_index = LearnedIndex()
+            self._learned_index.load(learned_index_path)
+        except (FileNotFoundError, json.JSONDecodeError, KeyError):
+            self._learned_index = None
 
     @staticmethod
     def _discretize_features(initial_hb: float, gest_weeks: int,
@@ -58,24 +77,73 @@ class AnemiaPredictionEngine:
     def predict(self, initial_hb: float, gestational_weeks: int,
                 ifa_compliance: float, dietary_score: float,
                 prev_anemia: bool) -> dict:
-        """O(1) hemoglobin trajectory prediction.
+        """O(1) hemoglobin trajectory prediction via learned index.
+
+        Primary path: Learned index MLP predicts approximate position in sorted
+        trajectory array → local search over ±max_error positions for best match.
+        Fallback 1: Hash-based discretized index lookup.
+        Fallback 2: Analytical physiological model computation.
 
         Returns dict with: current_hb, predicted_delivery_hb, trajectory,
         risk_level, intervention_urgency, compliance_impact
         """
+        # Primary: Learned index (O(1) — MLP inference + bounded local search)
+        if self._learned_index is not None and self._learned_index.is_loaded:
+            traj = self._learned_index_lookup(
+                initial_hb, gestational_weeks, ifa_compliance,
+                dietary_score, prev_anemia
+            )
+            if traj is not None:
+                return self._format_result(traj, initial_hb, gestational_weeks, ifa_compliance)
+
+        # Fallback 1: Hash-based discretized index
         key = self._discretize_features(initial_hb, gestational_weeks,
                                          ifa_compliance, dietary_score, prev_anemia)
-
-        # O(1) index lookup
         if key in self._index:
             pos = self._index[key]
             if 0 <= pos < len(self._trajectories):
                 traj = self._trajectories[pos]
                 return self._format_result(traj, initial_hb, gestational_weeks, ifa_compliance)
 
-        # Fallback: compute trajectory analytically
+        # Fallback 2: Analytical physiological model
         return self._compute_trajectory(initial_hb, gestational_weeks,
                                          ifa_compliance, dietary_score, prev_anemia)
+
+    def _learned_index_lookup(self, initial_hb: float, gest_weeks: int,
+                               ifa_compliance: float, dietary_score: float,
+                               prev_anemia: bool) -> Optional[dict]:
+        """Use learned index MLP to find best-matching trajectory.
+
+        The MLP predicts approximate position in sorted array.
+        Local search over ±max_error refines to best match.
+        """
+        predicted_pos = self._learned_index.predict_position(
+            initial_hb, gest_weeks, ifa_compliance, dietary_score, prev_anemia
+        )
+        lo, hi = self._learned_index.search_window(predicted_pos)
+
+        if not self._trajectories:
+            return None
+
+        # Compute expected delivery Hb analytically for comparison
+        analytical = self._compute_trajectory(
+            initial_hb, gest_weeks, ifa_compliance, dietary_score, prev_anemia
+        )
+        target_hb = analytical["predicted_delivery_hb"]
+
+        # Local search: find trajectory with closest predicted delivery Hb
+        best_pos = predicted_pos
+        best_diff = float("inf")
+        for pos in range(lo, hi + 1):
+            if 0 <= pos < len(self._trajectories):
+                diff = abs(self._trajectories[pos]["predicted_delivery_hb"] - target_hb)
+                if diff < best_diff:
+                    best_diff = diff
+                    best_pos = pos
+
+        if 0 <= best_pos < len(self._trajectories):
+            return self._trajectories[best_pos]
+        return None
 
     def _compute_trajectory(self, initial_hb: float, gest_weeks: int,
                             ifa_compliance: float, dietary_score: float,
