@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="JananiSuraksha - AI-Powered Maternal Health Risk Intelligence for India's ASHA Workers">
+    <meta name="theme-color" content="#FF9933">
+    <title>JananiSuraksha — AI-Powered Maternal Health Risk Intelligence</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <link rel="stylesheet" href="/static/css/custom.css">
+    <script src="/static/js/app.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        saffron: '#FF9933',
+                        'saffron-dark': '#E6861A',
+                        'india-green': '#138808',
+                        'india-navy': '#000080',
+                        'risk-critical': '#DC2626',
+                        'risk-high': '#F97316',
+                        'risk-medium': '#EAB308',
+                        'risk-low': '#22C55E',
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-gray-50 min-h-screen flex flex-col" x-data="assessmentApp()">
+
+    <!-- Skip to content for accessibility -->
+    <a href="#main-content" class="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 bg-india-navy text-white px-4 py-2 rounded z-50">Skip to main content</a>
+
+    <!-- Header -->
+    <header class="bg-gradient-to-r from-saffron to-saffron-dark shadow-lg">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex flex-col sm:flex-row items-center justify-between py-4">
+                <div class="text-center sm:text-left mb-3 sm:mb-0">
+                    <h1 class="text-2xl sm:text-3xl font-bold text-white tracking-tight">
+                        <span aria-hidden="true" class="mr-2">&#x1F3E5;</span>JananiSuraksha
+                    </h1>
+                    <p class="text-white text-opacity-90 text-sm">AI-Powered Maternal Health Risk Intelligence</p>
+                    <p class="text-white text-opacity-70 text-xs">Powered by dmj.one</p>
+                </div>
+                <nav aria-label="Main navigation">
+                    <ul class="flex space-x-1 sm:space-x-4">
+                        <li><a href="/" class="bg-white bg-opacity-20 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-opacity-30 transition" aria-current="page">Home</a></li>
+                        <li><a href="/dashboard" class="text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-white hover:bg-opacity-20 transition">Dashboard</a></li>
+                        <li><a href="/about" class="text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-white hover:bg-opacity-20 transition">About</a></li>
+                        <li><a href="/docs" class="text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-white hover:bg-opacity-20 transition">API Docs</a></li>
+                    </ul>
+                </nav>
+            </div>
+        </div>
+        <!-- Tricolor stripe -->
+        <div class="flex h-1">
+            <div class="flex-1 bg-saffron"></div>
+            <div class="flex-1 bg-white"></div>
+            <div class="flex-1 bg-india-green"></div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main id="main-content" class="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 w-full">
+
+        <!-- Page Title & Demo Button -->
+        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-3">
+            <div>
+                <h2 class="text-2xl font-bold text-gray-800">ASHA Worker Risk Assessment</h2>
+                <p class="text-gray-500 text-sm mt-1">Complete the 10-question maternal health assessment below</p>
+            </div>
+            <button @click="loadDemo()" type="button"
+                class="inline-flex items-center px-4 py-2 border-2 border-india-navy text-india-navy rounded-lg text-sm font-semibold hover:bg-india-navy hover:text-white transition focus:outline-none focus:ring-2 focus:ring-india-navy focus:ring-offset-2">
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                Load Demo Case
+            </button>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+            <!-- Assessment Form -->
+            <div class="lg:col-span-2">
+                <form @submit.prevent="runAssessment()" class="space-y-6">
+
+                    <!-- Section 1: Mother's Information -->
+                    <fieldset class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+                        <legend class="text-lg font-semibold text-india-navy flex items-center px-2">
+                            <svg class="w-5 h-5 mr-2 text-saffron" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                            Mother's Information
+                        </legend>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-3">
+                            <div>
+                                <label for="mother_name" class="block text-sm font-medium text-gray-700 mb-1">Mother's Name <span class="text-red-500" aria-hidden="true">*</span></label>
+                                <input type="text" id="mother_name" x-model="form.mother_name" required
+                                    class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-saffron focus:border-saffron transition"
+                                    placeholder="Enter mother's name" autocomplete="name">
+                            </div>
+                            <div>
+                                <label for="asha_id" class="block text-sm font-medium text-gray-700 mb-1">ASHA Worker ID</label>
+                                <input type="text" id="asha_id" x-model="form.asha_id"
+                                    class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-saffron focus:border-saffron transition bg-gray-50"
+                                    placeholder="ASHA-001">
+                            </div>
+                        </div>
+                    </fieldset>
+
+                    <!-- Section 2: Health Parameters -->
+                    <fieldset class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+                        <legend class="text-lg font-semibold text-india-navy flex items-center px-2">
+                            <svg class="w-5 h-5 mr-2 text-saffron" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg>
+                            Health Parameters
+                        </legend>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-3">
+                            <div>
+                                <label for="age" class="block text-sm font-medium text-gray-700 mb-1">Age (years) <span class="text-red-500" aria-hidden="true">*</span></label>
+                                <input type="number" id="age" x-model.number="form.age" required min="12" max="55"
+                                    class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-saffron focus:border-saffron transition"
+                                    placeholder="18-45">
+                            </div>
+                            <div>
+                                <label for="parity" class="block text-sm font-medium text-gray-700 mb-1">Previous Pregnancies <span class="text-red-500" aria-hidden="true">*</span></label>
+                                <input type="number" id="parity" x-model.number="form.parity" required min="0" max="15"
+                                    class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-saffron focus:border-saffron transition"
+                                    placeholder="0-15">
+                            </div>
+                            <div>
+                                <label for="hemoglobin" class="block text-sm font-medium text-gray-700 mb-1">Hemoglobin (g/dL) <span class="text-red-500" aria-hidden="true">*</span></label>
+                                <input type="number" id="hemoglobin" x-model.number="form.hemoglobin" required min="3" max="20" step="0.1"
+                                    class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-saffron focus:border-saffron transition"
+                                    placeholder="8.0-14.0">
+                            </div>
+                            <div>
+                                <label for="bp_systolic" class="block text-sm font-medium text-gray-700 mb-1">BP Systolic (mmHg) <span class="text-red-500" aria-hidden="true">*</span></label>
+                                <input type="number" id="bp_systolic" x-model.number="form.bp_systolic" required min="60" max="250"
+                                    class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-saffron focus:border-saffron transition"
+                                    placeholder="90-140">
+                            </div>
+                            <div>
+                                <label for="bp_diastolic" class="block text-sm font-medium text-gray-700 mb-1">BP Diastolic (mmHg) <span class="text-red-500" aria-hidden="true">*</span></label>
+                                <input type="number" id="bp_diastolic" x-model.number="form.bp_diastolic" required min="30" max="160"
+                                    class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-saffron focus:border-saffron transition"
+                                    placeholder="60-90">
+                            </div>
+                            <div>
+                                <label for="gestational_weeks" class="block text-sm font-medium text-gray-700 mb-1">Gestational Weeks <span class="text-red-500" aria-hidden="true">*</span></label>
+                                <input type="number" id="gestational_weeks" x-model.number="form.gestational_weeks" required min="1" max="45"
+                                    class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-saffron focus:border-saffron transition"
+                                    placeholder="1-42">
+                            </div>
+                            <div>
+                                <label for="height_cm" class="block text-sm font-medium text-gray-700 mb-1">Height (cm) <span class="text-red-500" aria-hidden="true">*</span></label>
+                                <input type="number" id="height_cm" x-model.number="form.height_cm" required min="100" max="220"
+                                    class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-saffron focus:border-saffron transition"
+                                    placeholder="140-180">
+                            </div>
+                            <div>
+                                <label for="weight_kg" class="block text-sm font-medium text-gray-700 mb-1">Weight (kg) <span class="text-red-500" aria-hidden="true">*</span></label>
+                                <input type="number" id="weight_kg" x-model.number="form.weight_kg" required min="25" max="200"
+                                    class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-saffron focus:border-saffron transition"
+                                    placeholder="40-100">
+                            </div>
+                            <div>
+                                <label for="complication_history" class="block text-sm font-medium text-gray-700 mb-1">Complication History</label>
+                                <select id="complication_history" x-model="form.complication_history"
+                                    class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-saffron focus:border-saffron transition bg-white">
+                                    <option value="none">None</option>
+                                    <option value="previous_csection">Previous C-Section</option>
+                                    <option value="previous_pph">Previous PPH</option>
+                                    <option value="previous_eclampsia">Previous Eclampsia</option>
+                                    <option value="multiple">Multiple Complications</option>
+                                </select>
+                            </div>
+                        </div>
+                    </fieldset>
+
+                    <!-- Section 3: Supplementation & Nutrition -->
+                    <fieldset class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+                        <legend class="text-lg font-semibold text-india-navy flex items-center px-2">
+                            <svg class="w-5 h-5 mr-2 text-saffron" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            Supplementation &amp; Nutrition
+                        </legend>
+                        <div class="space-y-5 mt-3">
+                            <div>
+                                <label for="ifa_compliance" class="block text-sm font-medium text-gray-700 mb-2">
+                                    IFA Compliance: <span class="font-bold text-india-navy" x-text="form.ifa_compliance + '%'"></span>
+                                </label>
+                                <input type="range" id="ifa_compliance" x-model.number="form.ifa_compliance" min="0" max="100" step="5"
+                                    class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-saffron">
+                                <div class="flex justify-between text-xs text-gray-400 mt-1">
+                                    <span>0%</span><span>25%</span><span>50%</span><span>75%</span><span>100%</span>
+                                </div>
+                            </div>
+                            <div>
+                                <label for="dietary_score" class="block text-sm font-medium text-gray-700 mb-2">
+                                    Dietary Score: <span class="font-bold text-india-navy" x-text="form.dietary_score + '%'"></span>
+                                </label>
+                                <input type="range" id="dietary_score" x-model.number="form.dietary_score" min="0" max="100" step="5"
+                                    class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-india-green">
+                                <div class="flex justify-between text-xs text-gray-400 mt-1">
+                                    <span>0%</span><span>25%</span><span>50%</span><span>75%</span><span>100%</span>
+                                </div>
+                            </div>
+                            <div class="flex items-center">
+                                <input type="checkbox" id="previous_anemia" x-model="form.previous_anemia"
+                                    class="w-4 h-4 text-saffron border-gray-300 rounded focus:ring-saffron">
+                                <label for="previous_anemia" class="ml-2 text-sm font-medium text-gray-700">Previous Anemia History</label>
+                            </div>
+                        </div>
+                    </fieldset>
+
+                    <!-- Section 4: Location -->
+                    <fieldset class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+                        <legend class="text-lg font-semibold text-india-navy flex items-center px-2">
+                            <svg class="w-5 h-5 mr-2 text-saffron" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                            Location
+                        </legend>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-3">
+                            <div>
+                                <label for="latitude" class="block text-sm font-medium text-gray-700 mb-1">Latitude</label>
+                                <input type="number" id="latitude" x-model.number="form.latitude" step="0.01" min="-90" max="90"
+                                    class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-saffron focus:border-saffron transition"
+                                    placeholder="27.57">
+                            </div>
+                            <div>
+                                <label for="longitude" class="block text-sm font-medium text-gray-700 mb-1">Longitude</label>
+                                <input type="number" id="longitude" x-model.number="form.longitude" step="0.01" min="-180" max="180"
+                                    class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-saffron focus:border-saffron transition"
+                                    placeholder="80.68">
+                            </div>
+                        </div>
+                        <p class="text-xs text-gray-400 mt-2">Default: Sitapur, Uttar Pradesh (27.57, 80.68)</p>
+                    </fieldset>
+
+                    <!-- Submit Button -->
+                    <div class="flex flex-col sm:flex-row gap-3">
+                        <button type="submit" :disabled="loading"
+                            class="flex-1 bg-saffron hover:bg-saffron-dark text-white font-bold py-3 px-6 rounded-xl text-lg shadow-lg hover:shadow-xl transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-saffron focus:ring-opacity-50 disabled:opacity-50 disabled:cursor-not-allowed">
+                            <span x-show="!loading" class="flex items-center justify-center">
+                                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
+                                Run Assessment
+                            </span>
+                            <span x-show="loading" class="flex items-center justify-center">
+                                <svg class="animate-spin w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                                Analyzing...
+                            </span>
+                        </button>
+                        <button type="button" @click="resetForm()"
+                            class="px-6 py-3 border-2 border-gray-300 text-gray-600 rounded-xl font-medium hover:bg-gray-100 transition focus:outline-none focus:ring-2 focus:ring-gray-300">
+                            Reset
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Results Panel (right column on large screens) -->
+            <div class="lg:col-span-1" x-show="results || error" x-transition:enter="fade-in" x-cloak>
+
+                <!-- Error Display -->
+                <template x-if="error">
+                    <div class="bg-red-50 border border-red-200 rounded-xl p-5 mb-6">
+                        <div class="flex items-center mb-2">
+                            <svg class="w-5 h-5 text-red-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            <h3 class="font-semibold text-red-800">Assessment Error</h3>
+                        </div>
+                        <p class="text-sm text-red-700" x-text="error"></p>
+                        <button @click="error = null" class="mt-3 text-sm text-red-600 underline hover:no-underline">Dismiss</button>
+                    </div>
+                </template>
+
+                <template x-if="results">
+                    <div class="space-y-5">
+
+                        <!-- Risk Score Card -->
+                        <div class="rounded-xl shadow-sm border-2 overflow-hidden"
+                            :class="riskBorderClass(results.risk_assessment?.risk_level)">
+                            <div class="p-5" :class="riskBgClass(results.risk_assessment?.risk_level)">
+                                <div class="text-center">
+                                    <p class="text-sm font-medium opacity-80 uppercase tracking-wide">Risk Level</p>
+                                    <p class="text-4xl font-black mt-1"
+                                        :class="{
+                                            'text-green-800': results.risk_assessment?.risk_level === 'LOW',
+                                            'text-yellow-800': results.risk_assessment?.risk_level === 'MEDIUM',
+                                            'text-orange-800': results.risk_assessment?.risk_level === 'HIGH',
+                                            'text-red-800 risk-critical': results.risk_assessment?.risk_level === 'CRITICAL'
+                                        }"
+                                        x-text="results.risk_assessment?.risk_level || 'N/A'">
+                                    </p>
+                                    <p class="text-2xl font-bold mt-1 text-gray-800">
+                                        Score: <span x-text="results.risk_assessment?.risk_score?.toFixed(4) || 'N/A'"></span>
+                                    </p>
+                                </div>
+                            </div>
+                            <!-- Risk Factors Table -->
+                            <div class="bg-white p-4" x-show="results.risk_assessment?.risk_factors?.length > 0">
+                                <h4 class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Risk Factors</h4>
+                                <table class="w-full text-sm">
+                                    <tbody>
+                                        <template x-for="factor in (results.risk_assessment?.risk_factors || [])" :key="factor.factor">
+                                            <tr class="border-b border-gray-100 last:border-0">
+                                                <td class="py-1.5 text-gray-700" x-text="factor.factor"></td>
+                                                <td class="py-1.5 text-gray-600 text-sm" x-text="factor.value"></td>
+                                                <td class="py-1.5 text-right">
+                                                    <span class="inline-block px-2 py-0.5 rounded-full text-xs font-medium"
+                                                        :class="factor.severity === 'critical' ? 'bg-red-100 text-red-700' : factor.severity === 'high' ? 'bg-orange-100 text-orange-700' : factor.severity === 'moderate' ? 'bg-yellow-100 text-yellow-700' : 'bg-green-100 text-green-700'"
+                                                        x-text="factor.severity"></span>
+                                                </td>
+                                            </tr>
+                                        </template>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Anemia Prediction Card -->
+                        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5"
+                            x-show="results.anemia_prediction">
+                            <h3 class="text-sm font-semibold text-india-navy flex items-center mb-3">
+                                <svg class="w-4 h-4 mr-2 text-red-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clip-rule="evenodd"/></svg>
+                                Anemia Prediction
+                            </h3>
+                            <div class="space-y-3">
+                                <div class="flex justify-between items-center">
+                                    <span class="text-sm text-gray-600">Current Hb</span>
+                                    <span class="font-bold" :class="form.hemoglobin < 7 ? 'text-red-600' : form.hemoglobin < 11 ? 'text-orange-600' : 'text-green-600'"
+                                        x-text="(results.anemia_prediction?.current_hb || form.hemoglobin) + ' g/dL'"></span>
+                                </div>
+                                <div class="flex justify-between items-center">
+                                    <span class="text-sm text-gray-600">Predicted at Delivery</span>
+                                    <span class="font-bold"
+                                        :class="(results.anemia_prediction?.predicted_delivery_hb || 0) < 7 ? 'text-red-600' : (results.anemia_prediction?.predicted_delivery_hb || 0) < 11 ? 'text-orange-600' : 'text-green-600'"
+                                        x-text="(results.anemia_prediction?.predicted_delivery_hb?.toFixed(1) || 'N/A') + ' g/dL'"></span>
+                                </div>
+
+                                <!-- Hb Trajectory Bar -->
+                                <div class="mt-3">
+                                    <p class="text-xs text-gray-500 mb-1">Hemoglobin Trajectory</p>
+                                    <div class="relative h-6 bg-gray-100 rounded-full overflow-hidden">
+                                        <div class="absolute inset-y-0 left-0 rounded-full transition-all duration-700"
+                                            :class="(results.anemia_prediction?.predicted_delivery_hb || 0) < 7 ? 'bg-red-500' : (results.anemia_prediction?.predicted_delivery_hb || 0) < 11 ? 'bg-orange-400' : 'bg-green-500'"
+                                            :style="'width: ' + Math.min(100, ((results.anemia_prediction?.predicted_delivery_hb || 0) / 16) * 100) + '%'">
+                                        </div>
+                                        <!-- Normal range marker -->
+                                        <div class="absolute inset-y-0 border-l-2 border-dashed border-green-700" style="left: 68.75%" title="Normal: 11 g/dL"></div>
+                                    </div>
+                                    <div class="flex justify-between text-xs text-gray-400 mt-1">
+                                        <span>0</span><span>Severe (&lt;7)</span><span>Normal (11+)</span><span>16</span>
+                                    </div>
+                                </div>
+
+                                <!-- Compliance Impact -->
+                                <div class="bg-blue-50 rounded-lg p-3 mt-2" x-show="results.anemia_prediction?.compliance_impact">
+                                    <p class="text-xs font-semibold text-blue-800 mb-1">If IFA compliance improves to 100%:</p>
+                                    <p class="text-sm text-blue-700">
+                                        Predicted Hb: <strong x-text="(results.anemia_prediction?.compliance_impact?.full_compliance_hb?.toFixed(1) || 'N/A') + ' g/dL'"></strong>
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Referral Card -->
+                        <div class="bg-white rounded-xl shadow-sm border border-red-200 p-5"
+                            x-show="results.referral">
+                            <h3 class="text-sm font-semibold text-red-700 flex items-center mb-3">
+                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                                Referral Recommendation
+                            </h3>
+                            <div class="space-y-2 text-sm">
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600">Facility</span>
+                                    <span class="font-medium text-gray-800" x-text="results.referral?.facility_name || 'N/A'"></span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600">Type</span>
+                                    <span class="font-medium text-gray-800" x-text="results.referral?.facility_type || 'N/A'"></span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600">Distance</span>
+                                    <span class="font-medium text-gray-800" x-text="(results.referral?.distance_km?.toFixed(1) || 'N/A') + ' km'"></span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600">ETA</span>
+                                    <span class="font-medium text-gray-800" x-text="(results.referral?.eta_minutes || 'N/A') + ' min'"></span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600">Specialist</span>
+                                    <span class="font-medium"
+                                        :class="results.referral?.specialist_available ? 'text-green-600' : 'text-red-600'"
+                                        x-text="results.referral?.specialist_available ? 'Available' : 'Not Available'"></span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600">Blood Bank</span>
+                                    <span class="font-medium"
+                                        :class="results.referral?.blood_bank_status === 'available' ? 'text-green-600' : results.referral?.blood_bank_status === 'limited' ? 'text-yellow-600' : 'text-red-600'"
+                                        x-text="formatBloodBank(results.referral?.blood_bank_status)"></span>
+                                </div>
+                                <!-- Backup Facility -->
+                                <div class="mt-3 pt-3 border-t border-gray-100" x-show="results.referral?.backup_facility">
+                                    <p class="text-xs text-gray-500 uppercase tracking-wide mb-1">Backup Facility</p>
+                                    <p class="font-medium text-gray-700" x-text="results.referral?.backup_facility?.name || 'N/A'"></p>
+                                    <p class="text-gray-500 text-xs" x-text="(results.referral?.backup_facility?.distance_km?.toFixed(1) || '') + ' km away'"></p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Alerts & Recommendations -->
+                        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5"
+                            x-show="results.alerts?.length > 0 || results.recommendations?.length > 0">
+                            <h3 class="text-sm font-semibold text-india-navy mb-3">Alerts &amp; Recommendations</h3>
+                            <ul class="space-y-2">
+                                <template x-for="alert in (results.alerts || [])" :key="alert.message || alert">
+                                    <li class="flex items-start text-sm rounded-lg p-2"
+                                        :class="(alert.severity || 'info') === 'critical' ? 'bg-red-50 text-red-800' : (alert.severity || 'info') === 'warning' ? 'bg-yellow-50 text-yellow-800' : 'bg-blue-50 text-blue-800'">
+                                        <svg class="w-4 h-4 mr-2 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                                        </svg>
+                                        <span x-text="alert.message || alert"></span>
+                                    </li>
+                                </template>
+                                <template x-for="rec in (results.recommendations || [])" :key="rec">
+                                    <li class="flex items-start text-sm bg-green-50 text-green-800 rounded-lg p-2">
+                                        <svg class="w-4 h-4 mr-2 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                                        </svg>
+                                        <span x-text="rec"></span>
+                                    </li>
+                                </template>
+                            </ul>
+                        </div>
+
+                        <!-- Follow-up -->
+                        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5"
+                            x-show="results.follow_up">
+                            <h3 class="text-sm font-semibold text-india-navy mb-2">Follow-up Schedule</h3>
+                            <div class="flex items-center text-sm text-gray-700">
+                                <svg class="w-4 h-4 mr-2 text-saffron" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                                Next assessment: <strong class="ml-1" x-text="results.follow_up?.next_date || 'As per protocol'"></strong>
+                            </div>
+                            <p class="text-xs text-gray-500 mt-1" x-text="results.follow_up?.notes || ''"></p>
+                        </div>
+
+                        <!-- Print Button -->
+                        <button @click="window.print()" class="w-full py-2 border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50 transition flex items-center justify-center">
+                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+                            Print Report
+                        </button>
+
+                    </div>
+                </template>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-gray-800 text-gray-300 mt-8">
+        <div class="flex h-1">
+            <div class="flex-1 bg-saffron"></div>
+            <div class="flex-1 bg-white"></div>
+            <div class="flex-1 bg-india-green"></div>
+        </div>
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+            <div class="flex flex-col md:flex-row items-center justify-between gap-4">
+                <div class="text-center md:text-left">
+                    <p class="text-sm font-medium text-white">JananiSuraksha v1.0.0 | Powered by dmj.one</p>
+                    <p class="text-xs text-gray-400 mt-1">Dream. Manifest. Journey. Together as one.</p>
+                    <p class="text-xs text-saffron mt-1 font-medium">Vision: Aatmnirbhar Viksit Bharat 2047</p>
+                </div>
+                <div class="flex space-x-6 text-sm">
+                    <a href="/docs" class="hover:text-white transition">API Documentation</a>
+                    <a href="https://github.com" class="hover:text-white transition" target="_blank" rel="noopener noreferrer">GitHub</a>
+                    <a href="/pitch" class="hover:text-white transition">Investor Pitch</a>
+                    <span class="text-gray-500">Patent Pending</span>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Toast Notification Container -->
+    <div id="toast-container" class="fixed bottom-4 right-4 z-50 space-y-2" aria-live="polite"></div>
+
+    <script>
+        function assessmentApp() {
+            return {
+                loading: false,
+                results: null,
+                error: null,
+                form: {
+                    mother_name: '',
+                    asha_id: 'ASHA-001',
+                    age: null,
+                    parity: null,
+                    hemoglobin: null,
+                    bp_systolic: null,
+                    bp_diastolic: null,
+                    gestational_weeks: null,
+                    height_cm: null,
+                    weight_kg: null,
+                    complication_history: 'none',
+                    ifa_compliance: 50,
+                    dietary_score: 50,
+                    previous_anemia: false,
+                    latitude: 27.57,
+                    longitude: 80.68
+                },
+
+                loadDemo() {
+                    this.form = {
+                        mother_name: 'Sunita',
+                        asha_id: 'ASHA-001',
+                        age: 26,
+                        parity: 1,
+                        hemoglobin: 8.5,
+                        bp_systolic: 130,
+                        bp_diastolic: 85,
+                        gestational_weeks: 20,
+                        height_cm: 157,
+                        weight_kg: 55,
+                        complication_history: 'none',
+                        ifa_compliance: 60,
+                        dietary_score: 50,
+                        previous_anemia: false,
+                        latitude: 27.57,
+                        longitude: 80.68
+                    };
+                    this.results = null;
+                    this.error = null;
+                    showNotification('Demo case loaded: Sunita, 26y, Hb 8.5, BP 130/85', 'info');
+                },
+
+                resetForm() {
+                    this.form = {
+                        mother_name: '',
+                        asha_id: 'ASHA-001',
+                        age: null,
+                        parity: null,
+                        hemoglobin: null,
+                        bp_systolic: null,
+                        bp_diastolic: null,
+                        gestational_weeks: null,
+                        height_cm: null,
+                        weight_kg: null,
+                        complication_history: 'none',
+                        ifa_compliance: 50,
+                        dietary_score: 50,
+                        previous_anemia: false,
+                        latitude: 27.57,
+                        longitude: 80.68
+                    };
+                    this.results = null;
+                    this.error = null;
+                },
+
+                async runAssessment() {
+                    this.loading = true;
+                    this.error = null;
+                    this.results = null;
+
+                    const payload = {
+                        mother_name: this.form.mother_name,
+                        asha_id: this.form.asha_id,
+                        risk_factors: {
+                            age: parseInt(this.form.age),
+                            parity: parseInt(this.form.parity),
+                            hemoglobin: parseFloat(this.form.hemoglobin),
+                            bp_systolic: parseInt(this.form.bp_systolic),
+                            bp_diastolic: parseInt(this.form.bp_diastolic),
+                            gestational_weeks: parseInt(this.form.gestational_weeks),
+                            height_cm: parseFloat(this.form.height_cm),
+                            weight_kg: parseFloat(this.form.weight_kg),
+                            complication_history: this.form.complication_history,
+                        },
+                        ifa_compliance: this.form.ifa_compliance / 100,
+                        dietary_score: this.form.dietary_score / 100,
+                        prev_anemia: this.form.previous_anemia,
+                        latitude: this.form.latitude,
+                        longitude: this.form.longitude
+                    };
+
+                    try {
+                        const response = await fetch('/api/v1/assessment', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payload)
+                        });
+
+                        if (!response.ok) {
+                            const errData = await response.json().catch(() => ({}));
+                            throw new Error(errData.detail || errData.message || `Server error: ${response.status}`);
+                        }
+
+                        const raw = await response.json();
+                        // Normalize API response to frontend format
+                        const riskLevel = (raw.risk?.risk_level || '').toUpperCase();
+                        const riskFactorsSummary = raw.risk?.risk_factors_summary || {};
+                        const riskFactorsArr = Object.entries(riskFactorsSummary).map(([k, v]) => ({
+                            factor: k.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
+                            severity: v.includes('severe') || v.includes('Crisis') || v.includes('Critical') ? 'critical' :
+                                      v.includes('moderate') || v.includes('Stage') || v.includes('high risk') ? 'moderate' :
+                                      v.includes('mild') || v.includes('Elevated') || v.includes('Underweight') || v.includes('Overweight') ? 'high' : 'normal',
+                            value: v
+                        }));
+                        this.results = {
+                            assessment_id: raw.assessment_id,
+                            timestamp: raw.timestamp,
+                            mother_name: raw.mother_name,
+                            risk_assessment: {
+                                risk_level: riskLevel,
+                                risk_score: raw.risk?.risk_score,
+                                risk_factors: riskFactorsArr
+                            },
+                            anemia_prediction: raw.anemia ? {
+                                current_hb: raw.anemia.current_hb,
+                                predicted_delivery_hb: raw.anemia.predicted_delivery_hb,
+                                trajectory: raw.anemia.trajectory,
+                                risk_level: raw.anemia.risk_level,
+                                intervention_urgency: raw.anemia.intervention_urgency,
+                                compliance_impact: {
+                                    full_compliance_hb: raw.anemia.compliance_impact?.with_90pct_compliance
+                                }
+                            } : null,
+                            referral: raw.referral,
+                            alerts: (raw.alerts || []).map(a => typeof a === 'string' ? { message: a, severity: a.includes('EMERGENCY') ? 'critical' : 'warning' } : a),
+                            recommendations: raw.recommendations || [],
+                            follow_up: { next_date: raw.follow_up_date }
+                        };
+                        showNotification(
+                            `Assessment complete: ${riskLevel || 'Done'}`,
+                            riskLevel === 'CRITICAL' ? 'error' :
+                            riskLevel === 'HIGH' ? 'warning' : 'success'
+                        );
+                    } catch (err) {
+                        this.error = err.message || 'Failed to connect to the assessment server. Please try again.';
+                        showNotification('Assessment failed: ' + this.error, 'error');
+                    } finally {
+                        this.loading = false;
+                    }
+                },
+
+                riskBorderClass(level) {
+                    const l = (level || '').toUpperCase();
+                    const map = {
+                        'LOW': 'border-green-400',
+                        'MEDIUM': 'border-yellow-400',
+                        'HIGH': 'border-orange-400',
+                        'CRITICAL': 'border-red-500'
+                    };
+                    return map[l] || 'border-gray-300';
+                },
+
+                riskBgClass(level) {
+                    const l = (level || '').toUpperCase();
+                    const map = {
+                        'LOW': 'bg-green-50',
+                        'MEDIUM': 'bg-yellow-50',
+                        'HIGH': 'bg-orange-50',
+                        'CRITICAL': 'bg-red-50'
+                    };
+                    return map[l] || 'bg-gray-50';
+                },
+
+                formatBloodBank: window.formatBloodBank || function(status) {
+                    const map = {
+                        'available': 'Available',
+                        'limited': 'Limited Stock',
+                        'unavailable': 'Not Available',
+                        'unknown': 'Unknown'
+                    };
+                    return map[status] || status || 'Unknown';
+                }
+            };
+        }
+    </script>
+</body>
+</html>

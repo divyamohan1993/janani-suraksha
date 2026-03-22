@@ -1,0 +1,8 @@
+# Copy this file to terraform.tfvars and fill in your values
+project_id    = "your-gcp-project-id"
+region        = "asia-south1"
+service_name  = "janani-suraksha"
+image_tag     = "latest"
+max_instances = 10
+min_instances = 0
+domain        = "jananisuraksha.dmj.one"

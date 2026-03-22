@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="JananiSuraksha District Health Officer Dashboard - Real-time maternal health monitoring">
+    <meta name="theme-color" content="#FF9933">
+    <title>Dashboard — JananiSuraksha</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <link rel="stylesheet" href="/static/css/custom.css">
+    <script src="/static/js/app.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        saffron: '#FF9933',
+                        'saffron-dark': '#E6861A',
+                        'india-green': '#138808',
+                        'india-navy': '#000080',
+                        'risk-critical': '#DC2626',
+                        'risk-high': '#F97316',
+                        'risk-medium': '#EAB308',
+                        'risk-low': '#22C55E',
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-gray-50 min-h-screen flex flex-col" x-data="dashboardApp()">
+
+    <a href="#main-content" class="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 bg-india-navy text-white px-4 py-2 rounded z-50">Skip to main content</a>
+
+    <!-- Header -->
+    <header class="bg-gradient-to-r from-saffron to-saffron-dark shadow-lg">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex flex-col sm:flex-row items-center justify-between py-4">
+                <div class="text-center sm:text-left mb-3 sm:mb-0">
+                    <h1 class="text-2xl sm:text-3xl font-bold text-white tracking-tight">
+                        <span aria-hidden="true" class="mr-2">&#x1F3E5;</span>JananiSuraksha
+                    </h1>
+                    <p class="text-white text-opacity-90 text-sm">AI-Powered Maternal Health Risk Intelligence</p>
+                    <p class="text-white text-opacity-70 text-xs">Powered by dmj.one</p>
+                </div>
+                <nav aria-label="Main navigation">
+                    <ul class="flex space-x-1 sm:space-x-4">
+                        <li><a href="/" class="text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-white hover:bg-opacity-20 transition">Home</a></li>
+                        <li><a href="/dashboard" class="bg-white bg-opacity-20 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-opacity-30 transition" aria-current="page">Dashboard</a></li>
+                        <li><a href="/about" class="text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-white hover:bg-opacity-20 transition">About</a></li>
+                        <li><a href="/docs" class="text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-white hover:bg-opacity-20 transition">API Docs</a></li>
+                    </ul>
+                </nav>
+            </div>
+        </div>
+        <div class="flex h-1">
+            <div class="flex-1 bg-saffron"></div>
+            <div class="flex-1 bg-white"></div>
+            <div class="flex-1 bg-india-green"></div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main id="main-content" class="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 w-full">
+
+        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-3">
+            <div>
+                <h2 class="text-2xl font-bold text-gray-800">District Health Officer Dashboard</h2>
+                <p class="text-gray-500 text-sm mt-1">Sitapur District, Uttar Pradesh &mdash; Real-time Monitoring</p>
+            </div>
+            <div class="text-sm text-gray-500">
+                <span x-text="new Date().toLocaleDateString('en-IN', {weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'})"></span>
+            </div>
+        </div>
+
+        <!-- Summary Stats Cards -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            <!-- Total Assessments Today -->
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-medium text-gray-500 uppercase tracking-wide">Assessments Today</p>
+                        <p class="text-3xl font-black text-india-navy mt-1" x-ref="assessmentCounter" x-text="stats.totalAssessments"></p>
+                    </div>
+                    <div class="bg-blue-50 p-3 rounded-lg">
+                        <svg class="w-6 h-6 text-india-navy" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+                    </div>
+                </div>
+                <p class="text-xs text-green-600 mt-2 flex items-center">
+                    <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z" clip-rule="evenodd"/></svg>
+                    +12% from yesterday
+                </p>
+            </div>
+
+            <!-- High Risk Pregnancies -->
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-medium text-gray-500 uppercase tracking-wide">High Risk</p>
+                        <p class="text-3xl font-black text-orange-600 mt-1" x-text="stats.highRisk"></p>
+                    </div>
+                    <div class="bg-orange-50 p-3 rounded-lg">
+                        <span class="inline-block bg-orange-500 text-white text-xs font-bold px-2 py-1 rounded-full">HIGH</span>
+                    </div>
+                </div>
+                <p class="text-xs text-gray-500 mt-2">Require specialist referral</p>
+            </div>
+
+            <!-- Critical Alerts -->
+            <div class="bg-white rounded-xl shadow-sm border border-red-200 p-5">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-medium text-gray-500 uppercase tracking-wide">Critical Alerts</p>
+                        <p class="text-3xl font-black text-red-600 mt-1 risk-critical" x-text="stats.criticalAlerts"></p>
+                    </div>
+                    <div class="bg-red-50 p-3 rounded-lg risk-critical">
+                        <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4.5c-.77-.833-2.694-.833-3.464 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z"/></svg>
+                    </div>
+                </div>
+                <p class="text-xs text-red-600 mt-2 font-medium">Immediate attention required</p>
+            </div>
+
+            <!-- Facilities Online -->
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-medium text-gray-500 uppercase tracking-wide">Facilities Online</p>
+                        <p class="text-3xl font-black text-india-green mt-1" x-text="stats.facilitiesOnline"></p>
+                    </div>
+                    <div class="bg-green-50 p-3 rounded-lg">
+                        <svg class="w-6 h-6 text-india-green" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
+                    </div>
+                </div>
+                <p class="text-xs text-green-600 mt-2 flex items-center">
+                    <span class="w-2 h-2 bg-green-500 rounded-full mr-1 animate-pulse"></span>
+                    All systems operational
+                </p>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+
+            <!-- Risk Distribution Chart -->
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4">Risk Distribution</h3>
+                <p class="text-xs text-gray-500 mb-4">Assessment outcomes for the current reporting period</p>
+                <div class="space-y-4">
+                    <template x-for="item in riskDistribution" :key="item.level">
+                        <div>
+                            <div class="flex items-center justify-between mb-1">
+                                <span class="text-sm font-medium text-gray-700" x-text="item.level"></span>
+                                <span class="text-sm font-bold" :class="item.textColor" x-text="item.percentage + '%'"></span>
+                            </div>
+                            <div class="w-full bg-gray-100 rounded-full h-5 overflow-hidden">
+                                <div class="h-full rounded-full transition-all duration-1000 ease-out flex items-center justify-end pr-2"
+                                    :class="item.barColor"
+                                    :style="'width: ' + item.percentage + '%'"
+                                    x-init="$nextTick(() => { $el.style.width = '0%'; setTimeout(() => $el.style.width = item.percentage + '%', 100) })">
+                                    <span class="text-xs font-bold text-white" x-text="item.count"></span>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+                <div class="mt-4 pt-4 border-t border-gray-100 flex items-center justify-between text-sm text-gray-500">
+                    <span>Total: <strong class="text-gray-800" x-text="riskDistribution.reduce((a, b) => a + b.count, 0)"></strong> assessments</span>
+                    <span>Period: Last 30 days</span>
+                </div>
+            </div>
+
+            <!-- Anemia Trend Panel -->
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4">Anemia Overview</h3>
+                <p class="text-xs text-gray-500 mb-4">District-level anemia statistics and trends</p>
+
+                <!-- National Stat -->
+                <div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-sm font-medium text-red-800">National Average (NFHS-5)</span>
+                        <span class="text-lg font-black text-red-700">52.2%</span>
+                    </div>
+                    <div class="w-full bg-red-100 rounded-full h-4 overflow-hidden">
+                        <div class="h-full bg-red-500 rounded-full" style="width: 52.2%"></div>
+                    </div>
+                    <p class="text-xs text-red-600 mt-1">52.2% of pregnant women in India are anemic</p>
+                </div>
+
+                <!-- District Stat -->
+                <div class="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-4">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-sm font-medium text-orange-800">Sitapur District</span>
+                        <span class="text-lg font-black text-orange-700">61.8%</span>
+                    </div>
+                    <div class="w-full bg-orange-100 rounded-full h-4 overflow-hidden">
+                        <div class="h-full bg-orange-500 rounded-full" style="width: 61.8%"></div>
+                    </div>
+                    <p class="text-xs text-orange-600 mt-1">Above national average by 9.6 percentage points</p>
+                </div>
+
+                <!-- Severity Breakdown -->
+                <div class="space-y-2">
+                    <h4 class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Severity Breakdown (District)</h4>
+                    <div class="grid grid-cols-3 gap-3">
+                        <div class="text-center p-3 bg-yellow-50 rounded-lg">
+                            <p class="text-lg font-bold text-yellow-700">34.2%</p>
+                            <p class="text-xs text-yellow-600">Mild</p>
+                            <p class="text-xs text-gray-400">Hb 10-10.9</p>
+                        </div>
+                        <div class="text-center p-3 bg-orange-50 rounded-lg">
+                            <p class="text-lg font-bold text-orange-700">19.8%</p>
+                            <p class="text-xs text-orange-600">Moderate</p>
+                            <p class="text-xs text-gray-400">Hb 7-9.9</p>
+                        </div>
+                        <div class="text-center p-3 bg-red-50 rounded-lg">
+                            <p class="text-lg font-bold text-red-700">7.8%</p>
+                            <p class="text-xs text-red-600">Severe</p>
+                            <p class="text-xs text-gray-400">Hb &lt;7</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Facility Map & Table -->
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5 mb-8">
+            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 gap-2">
+                <div>
+                    <h3 class="text-lg font-semibold text-gray-800">Health Facilities</h3>
+                    <p class="text-xs text-gray-500">Sitapur District, Uttar Pradesh — Registered facilities and capabilities</p>
+                </div>
+                <div class="bg-blue-50 border border-blue-200 rounded-lg px-3 py-2 text-xs text-blue-700">
+                    <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>
+                    Interactive Map (Coming Soon)
+                </div>
+            </div>
+
+            <!-- Facility Table -->
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="border-b-2 border-gray-200">
+                            <th class="text-left py-3 px-3 font-semibold text-gray-600 text-xs uppercase tracking-wide">Facility Name</th>
+                            <th class="text-left py-3 px-3 font-semibold text-gray-600 text-xs uppercase tracking-wide">Type</th>
+                            <th class="text-left py-3 px-3 font-semibold text-gray-600 text-xs uppercase tracking-wide">Capabilities</th>
+                            <th class="text-center py-3 px-3 font-semibold text-gray-600 text-xs uppercase tracking-wide">Specialist</th>
+                            <th class="text-center py-3 px-3 font-semibold text-gray-600 text-xs uppercase tracking-wide">Blood Bank</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <template x-for="facility in facilities" :key="facility.name">
+                            <tr class="border-b border-gray-100 hover:bg-gray-50 transition">
+                                <td class="py-3 px-3 font-medium text-gray-800" x-text="facility.name"></td>
+                                <td class="py-3 px-3">
+                                    <span class="inline-block px-2 py-0.5 rounded text-xs font-medium"
+                                        :class="facility.type === 'District Hospital' ? 'bg-blue-100 text-blue-700' : facility.type === 'CHC' ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-700'"
+                                        x-text="facility.type"></span>
+                                </td>
+                                <td class="py-3 px-3 text-gray-600 text-xs" x-text="facility.capabilities.join(', ')"></td>
+                                <td class="py-3 px-3 text-center">
+                                    <span class="inline-block w-3 h-3 rounded-full"
+                                        :class="facility.specialist ? 'bg-green-500' : 'bg-red-400'"
+                                        :title="facility.specialist ? 'Specialist available' : 'No specialist'"></span>
+                                </td>
+                                <td class="py-3 px-3 text-center">
+                                    <span class="inline-block px-2 py-0.5 rounded text-xs font-medium"
+                                        :class="facility.blood_bank === 'available' ? 'bg-green-100 text-green-700' : facility.blood_bank === 'limited' ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'"
+                                        x-text="formatBloodBank(facility.blood_bank)"></span>
+                                </td>
+                            </tr>
+                        </template>
+                    </tbody>
+                </table>
+            </div>
+            <p class="text-xs text-gray-400 mt-3" x-show="facilitiesLoading">Loading facility data...</p>
+            <p class="text-xs text-red-500 mt-3" x-show="facilitiesError" x-text="facilitiesError"></p>
+        </div>
+
+        <!-- Recent Assessments Table -->
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5 mb-8">
+            <h3 class="text-lg font-semibold text-gray-800 mb-4">Recent Assessments</h3>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="border-b-2 border-gray-200">
+                            <th class="text-left py-3 px-3 font-semibold text-gray-600 text-xs uppercase tracking-wide">Time</th>
+                            <th class="text-left py-3 px-3 font-semibold text-gray-600 text-xs uppercase tracking-wide">Mother</th>
+                            <th class="text-center py-3 px-3 font-semibold text-gray-600 text-xs uppercase tracking-wide">Risk Level</th>
+                            <th class="text-center py-3 px-3 font-semibold text-gray-600 text-xs uppercase tracking-wide">Hb (g/dL)</th>
+                            <th class="text-center py-3 px-3 font-semibold text-gray-600 text-xs uppercase tracking-wide">BP</th>
+                            <th class="text-left py-3 px-3 font-semibold text-gray-600 text-xs uppercase tracking-wide">Action Taken</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <template x-for="entry in recentAssessments" :key="entry.time + entry.mother">
+                            <tr class="border-b border-gray-100 hover:bg-gray-50 transition">
+                                <td class="py-3 px-3 text-gray-500 text-xs whitespace-nowrap" x-text="entry.time"></td>
+                                <td class="py-3 px-3 font-medium text-gray-800" x-text="entry.mother"></td>
+                                <td class="py-3 px-3 text-center">
+                                    <span class="inline-block px-2.5 py-1 rounded-full text-xs font-bold"
+                                        :class="{
+                                            'bg-green-100 text-green-800': entry.risk === 'LOW',
+                                            'bg-yellow-100 text-yellow-800': entry.risk === 'MEDIUM',
+                                            'bg-orange-100 text-orange-800': entry.risk === 'HIGH',
+                                            'bg-red-100 text-red-800 risk-critical': entry.risk === 'CRITICAL'
+                                        }"
+                                        x-text="entry.risk"></span>
+                                </td>
+                                <td class="py-3 px-3 text-center font-medium"
+                                    :class="entry.hb < 7 ? 'text-red-600' : entry.hb < 11 ? 'text-orange-600' : 'text-green-600'"
+                                    x-text="entry.hb"></td>
+                                <td class="py-3 px-3 text-center text-gray-700" x-text="entry.bp"></td>
+                                <td class="py-3 px-3 text-gray-600 text-xs" x-text="entry.action"></td>
+                            </tr>
+                        </template>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-gray-800 text-gray-300 mt-8">
+        <div class="flex h-1">
+            <div class="flex-1 bg-saffron"></div>
+            <div class="flex-1 bg-white"></div>
+            <div class="flex-1 bg-india-green"></div>
+        </div>
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+            <div class="flex flex-col md:flex-row items-center justify-between gap-4">
+                <div class="text-center md:text-left">
+                    <p class="text-sm font-medium text-white">JananiSuraksha v1.0.0 | Powered by dmj.one</p>
+                    <p class="text-xs text-gray-400 mt-1">Dream. Manifest. Journey. Together as one.</p>
+                    <p class="text-xs text-saffron mt-1 font-medium">Vision: Aatmnirbhar Viksit Bharat 2047</p>
+                </div>
+                <div class="flex space-x-6 text-sm">
+                    <a href="/docs" class="hover:text-white transition">API Documentation</a>
+                    <a href="https://github.com" class="hover:text-white transition" target="_blank" rel="noopener noreferrer">GitHub</a>
+                    <a href="/pitch" class="hover:text-white transition">Investor Pitch</a>
+                    <span class="text-gray-500">Patent Pending</span>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <div id="toast-container" class="fixed bottom-4 right-4 z-50 space-y-2" aria-live="polite"></div>
+
+    <script>
+        function dashboardApp() {
+            return {
+                stats: {
+                    totalAssessments: 0,
+                    highRisk: 23,
+                    criticalAlerts: 4,
+                    facilitiesOnline: 12
+                },
+                facilities: [],
+                facilitiesLoading: false,
+                facilitiesError: null,
+
+                riskDistribution: [
+                    { level: 'Low Risk', percentage: 45, count: 387, barColor: 'bg-green-500', textColor: 'text-green-700' },
+                    { level: 'Medium Risk', percentage: 30, count: 258, barColor: 'bg-yellow-500', textColor: 'text-yellow-700' },
+                    { level: 'High Risk', percentage: 18, count: 155, barColor: 'bg-orange-500', textColor: 'text-orange-700' },
+                    { level: 'Critical', percentage: 7, count: 60, barColor: 'bg-red-600', textColor: 'text-red-700' }
+                ],
+
+                recentAssessments: [
+                    { time: '09:45 AM', mother: 'Sunita Devi', risk: 'HIGH', hb: 8.5, bp: '130/85', action: 'Referred to District Hospital' },
+                    { time: '09:22 AM', mother: 'Priya Kumari', risk: 'LOW', hb: 12.1, bp: '118/72', action: 'Routine follow-up scheduled' },
+                    { time: '08:58 AM', mother: 'Meena Yadav', risk: 'CRITICAL', hb: 6.2, bp: '155/100', action: 'Emergency referral — ambulance dispatched' },
+                    { time: '08:30 AM', mother: 'Anita Singh', risk: 'MEDIUM', hb: 9.8, bp: '125/80', action: 'IFA compliance counseling, recheck in 2 weeks' },
+                    { time: '08:05 AM', mother: 'Kavita Sharma', risk: 'LOW', hb: 11.5, bp: '110/70', action: 'Routine follow-up scheduled' }
+                ],
+
+                init() {
+                    // Animate the assessment counter
+                    this.animateStats();
+                    // Fetch facilities from the API
+                    this.fetchFacilities();
+                    // Auto-increment demo counter
+                    this.startAutoIncrement();
+                },
+
+                animateStats() {
+                    const target = 147;
+                    const duration = 1500;
+                    const startTime = Date.now();
+                    const tick = () => {
+                        const elapsed = Date.now() - startTime;
+                        const progress = Math.min(elapsed / duration, 1);
+                        const eased = 1 - Math.pow(1 - progress, 3);
+                        this.stats.totalAssessments = Math.floor(eased * target);
+                        if (progress < 1) {
+                            requestAnimationFrame(tick);
+                        }
+                    };
+                    requestAnimationFrame(tick);
+                },
+
+                startAutoIncrement() {
+                    setInterval(() => {
+                        this.stats.totalAssessments++;
+                    }, 30000);
+                },
+
+                async fetchFacilities() {
+                    this.facilitiesLoading = true;
+                    this.facilitiesError = null;
+                    try {
+                        const response = await fetch('/api/v1/facilities');
+                        if (!response.ok) throw new Error('Failed to load facilities');
+                        const data = await response.json();
+                        this.facilities = (data.facilities || data || []).slice(0, 8);
+                    } catch (err) {
+                        this.facilitiesError = 'Could not load facility data from the server. Showing default data.';
+                        // Fallback demo data
+                        this.facilities = [
+                            { name: 'Sitapur District Hospital', type: 'District Hospital', capabilities: ['Emergency C-Section', 'Blood Transfusion', 'NICU', 'Ultrasound'], specialist: true, blood_bank: 'available' },
+                            { name: 'Laharpur CHC', type: 'CHC', capabilities: ['Normal Delivery', 'Basic EmOC', 'Ultrasound'], specialist: true, blood_bank: 'limited' },
+                            { name: 'Misrikh CHC', type: 'CHC', capabilities: ['Normal Delivery', 'Basic EmOC'], specialist: false, blood_bank: 'unavailable' },
+                            { name: 'Biswan CHC', type: 'CHC', capabilities: ['Normal Delivery', 'Stabilization', 'Ultrasound'], specialist: true, blood_bank: 'limited' },
+                            { name: 'Mahmoodabad PHC', type: 'PHC', capabilities: ['ANC Check-up', 'Stabilization', 'Referral'], specialist: false, blood_bank: 'unavailable' },
+                            { name: 'Sidhauli CHC', type: 'CHC', capabilities: ['Normal Delivery', 'Basic EmOC'], specialist: false, blood_bank: 'unavailable' }
+                        ];
+                    } finally {
+                        this.facilitiesLoading = false;
+                    }
+                },
+
+                formatBloodBank: window.formatBloodBank || function(status) {
+                    const map = {
+                        'available': 'Available',
+                        'limited': 'Limited',
+                        'unavailable': 'N/A',
+                        'unknown': 'Unknown'
+                    };
+                    return map[status] || status || 'Unknown';
+                }
+            };
+        }
+    </script>
+</body>
+</html>

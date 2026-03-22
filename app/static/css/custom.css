@@ -1,0 +1,287 @@
+/**
+ * JananiSuraksha — Custom CSS
+ * AI-Powered Maternal Health Risk Intelligence
+ * Powered by dmj.one
+ */
+
+/* ========================================
+   Risk Level Indicators
+   ======================================== */
+
+.risk-critical {
+    animation: pulse-critical 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse-critical {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.7;
+    }
+}
+
+.risk-high {
+    border-left: 4px solid #F97316;
+}
+
+.risk-medium {
+    border-left: 4px solid #EAB308;
+}
+
+.risk-low {
+    border-left: 4px solid #22C55E;
+}
+
+/* ========================================
+   Fade-in Animation for Results
+   ======================================== */
+
+.fade-in {
+    animation: fadeInUp 0.4s ease-out forwards;
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(12px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Alpine.js cloak - hide elements until Alpine initializes */
+[x-cloak] {
+    display: none !important;
+}
+
+/* ========================================
+   Custom Scrollbar
+   ======================================== */
+
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #f1f5f9;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #94a3b8;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #64748b;
+}
+
+/* Firefox scrollbar */
+* {
+    scrollbar-width: thin;
+    scrollbar-color: #94a3b8 #f1f5f9;
+}
+
+/* ========================================
+   Range Slider Styling
+   ======================================== */
+
+input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    height: 8px;
+    border-radius: 4px;
+    outline: none;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #FF9933;
+    cursor: pointer;
+    border: 2px solid #fff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+    transition: transform 0.15s ease;
+}
+
+input[type="range"]::-webkit-slider-thumb:hover {
+    transform: scale(1.15);
+}
+
+input[type="range"]::-moz-range-thumb {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #FF9933;
+    cursor: pointer;
+    border: 2px solid #fff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+    transition: transform 0.15s ease;
+}
+
+input[type="range"]::-moz-range-thumb:hover {
+    transform: scale(1.15);
+}
+
+input[type="range"]:focus {
+    outline: none;
+}
+
+input[type="range"]:focus::-webkit-slider-thumb {
+    box-shadow: 0 0 0 3px rgba(255, 153, 51, 0.3);
+}
+
+input[type="range"]:focus::-moz-range-thumb {
+    box-shadow: 0 0 0 3px rgba(255, 153, 51, 0.3);
+}
+
+/* ========================================
+   Form Focus States (enhanced accessibility)
+   ======================================== */
+
+input:focus,
+select:focus,
+textarea:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(255, 153, 51, 0.25);
+}
+
+/* ========================================
+   Table Styling
+   ======================================== */
+
+table tbody tr {
+    transition: background-color 0.15s ease;
+}
+
+/* ========================================
+   Print Styles
+   ======================================== */
+
+@media print {
+    /* Hide navigation, footer, and interactive elements */
+    header nav,
+    footer,
+    #toast-container,
+    button[type="button"],
+    button[type="submit"],
+    .no-print {
+        display: none !important;
+    }
+
+    /* Reset background colors for printing */
+    body {
+        background: #fff !important;
+        color: #000 !important;
+        font-size: 11pt;
+    }
+
+    /* Ensure content is visible */
+    main {
+        max-width: 100% !important;
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+
+    /* Keep risk colors visible in print */
+    .risk-critical {
+        animation: none !important;
+        border: 2px solid #DC2626 !important;
+    }
+
+    /* Print header */
+    header {
+        background: #fff !important;
+        color: #000 !important;
+        border-bottom: 2px solid #FF9933;
+        box-shadow: none !important;
+    }
+
+    header h1 {
+        color: #000 !important;
+    }
+
+    header p {
+        color: #333 !important;
+    }
+
+    /* Cards should have borders in print */
+    .bg-white {
+        border: 1px solid #ccc !important;
+        box-shadow: none !important;
+    }
+
+    /* Ensure form sections don't break across pages */
+    fieldset {
+        page-break-inside: avoid;
+    }
+
+    /* Page margins */
+    @page {
+        margin: 1.5cm;
+    }
+
+    /* Show link URLs in print */
+    a[href^="http"]::after {
+        content: " (" attr(href) ")";
+        font-size: 9pt;
+        color: #666;
+    }
+}
+
+/* ========================================
+   Accessibility
+   ======================================== */
+
+/* High contrast focus indicator */
+*:focus-visible {
+    outline: 2px solid #FF9933;
+    outline-offset: 2px;
+}
+
+/* Reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+
+    .risk-critical {
+        animation: none !important;
+        border: 2px solid #DC2626;
+    }
+}
+
+/* ========================================
+   Tricolor Stripe (used in header/footer)
+   ======================================== */
+
+.tricolor-stripe {
+    display: flex;
+    height: 4px;
+}
+
+.tricolor-stripe > div:nth-child(1) {
+    flex: 1;
+    background-color: #FF9933;
+}
+
+.tricolor-stripe > div:nth-child(2) {
+    flex: 1;
+    background-color: #FFFFFF;
+}
+
+.tricolor-stripe > div:nth-child(3) {
+    flex: 1;
+    background-color: #138808;
+}

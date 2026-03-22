@@ -1,0 +1,181 @@
+import json
+import math
+from typing import Optional
+
+
+class ReferralRoutingEngine:
+    """O(1) emergency referral routing via precomputed facility-capability shortest-path trees.
+
+    Models health facility network as directed weighted graph. Precomputed Dijkstra
+    shortest-path trees enable instant optimal facility recommendation.
+    """
+
+    # Capability levels (hierarchical)
+    CAPABILITIES = [
+        "basic_emoc",
+        "comprehensive_emoc",
+        "blood_transfusion",
+        "c_section",
+        "neonatal_icu",
+    ]
+
+    def __init__(self):
+        self._facilities: list[dict] = []
+        self._spt: dict[str, dict[str, dict]] = {}  # capability -> grid_key -> facility
+        self._loaded = False
+
+    def load(self, path: str) -> None:
+        """Load precomputed facility graph and SPTs from JSON."""
+        with open(path) as f:
+            data = json.load(f)
+        self._facilities = data["facilities"]
+        self._spt = data["shortest_path_trees"]
+        self._loaded = True
+
+    @staticmethod
+    def _haversine(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+        """Calculate distance in km between two lat/lon points."""
+        R = 6371  # Earth radius in km
+        dlat = math.radians(lat2 - lat1)
+        dlon = math.radians(lon2 - lon1)
+        a = (
+            math.sin(dlat / 2) ** 2
+            + math.cos(math.radians(lat1))
+            * math.cos(math.radians(lat2))
+            * math.sin(dlon / 2) ** 2
+        )
+        return R * 2 * math.asin(math.sqrt(a))
+
+    @staticmethod
+    def _grid_key(lat: float, lon: float) -> str:
+        """Convert lat/lon to grid cell key (0.1 degree resolution ~11km cells)."""
+        return f"{lat:.1f},{lon:.1f}"
+
+    def route(
+        self,
+        latitude: float,
+        longitude: float,
+        capability_required: str,
+        risk_level: str = "high",
+    ) -> dict:
+        """O(1) facility lookup via precomputed shortest-path tree.
+
+        Returns dict with: facility_name, facility_type, distance_km, eta_minutes,
+        specialist_available, blood_bank_status, has_functional_ot, contact_phone, backup_facility
+        """
+        grid = self._grid_key(latitude, longitude)
+
+        # O(1) lookup in precomputed SPT
+        if capability_required in self._spt and grid in self._spt[capability_required]:
+            result = self._spt[capability_required][grid].copy()
+            # Recalculate exact distance from actual coordinates
+            result["distance_km"] = round(
+                self._haversine(
+                    latitude, longitude, result["latitude"], result["longitude"]
+                ),
+                1,
+            )
+            result["eta_minutes"] = round(
+                result["distance_km"] * 2.0, 0
+            )  # ~30 km/h rural roads
+
+            # Find backup facility (next nearest with same capability)
+            backup = self._find_backup(
+                latitude, longitude, capability_required, result.get("facility_id")
+            )
+            result["backup_facility"] = backup
+
+            # Remove internal fields
+            result.pop("latitude", None)
+            result.pop("longitude", None)
+            result.pop("facility_id", None)
+
+            return result
+
+        # Fallback: linear scan (should not happen with complete SPT)
+        return self._find_nearest(latitude, longitude, capability_required)
+
+    def _find_nearest(self, lat: float, lon: float, capability: str) -> dict:
+        """Linear scan fallback for finding nearest facility with capability."""
+        best = None
+        best_dist = float("inf")
+
+        for facility in self._facilities:
+            if capability not in facility.get("capabilities", []):
+                continue
+            dist = self._haversine(
+                lat, lon, facility["latitude"], facility["longitude"]
+            )
+            if dist < best_dist:
+                best_dist = dist
+                best = facility
+
+        if best is None:
+            return {
+                "facility_name": "No facility available",
+                "facility_type": "unknown",
+                "distance_km": 0,
+                "eta_minutes": 0,
+                "specialist_available": False,
+                "blood_bank_status": "unavailable",
+                "has_functional_ot": False,
+                "contact_phone": "108",
+                "backup_facility": None,
+            }
+
+        return {
+            "facility_name": best["name"],
+            "facility_type": best["type"],
+            "distance_km": round(best_dist, 1),
+            "eta_minutes": round(best_dist * 2.0, 0),
+            "specialist_available": best.get("specialist_available", False),
+            "blood_bank_status": best.get("blood_bank_status", "unavailable"),
+            "has_functional_ot": best.get("has_functional_ot", False),
+            "contact_phone": best.get("contact_phone", "108"),
+            "backup_facility": None,
+        }
+
+    def _find_backup(
+        self,
+        lat: float,
+        lon: float,
+        capability: str,
+        exclude_id: Optional[str] = None,
+    ) -> Optional[dict]:
+        """Find second-nearest facility for backup routing."""
+        best = None
+        best_dist = float("inf")
+
+        for facility in self._facilities:
+            if facility.get("facility_id") == exclude_id:
+                continue
+            if capability not in facility.get("capabilities", []):
+                continue
+            dist = self._haversine(
+                lat, lon, facility["latitude"], facility["longitude"]
+            )
+            if dist < best_dist:
+                best_dist = dist
+                best = facility
+
+        if best is None:
+            return None
+
+        return {
+            "facility_name": best["name"],
+            "facility_type": best["type"],
+            "distance_km": round(best_dist, 1),
+            "eta_minutes": round(best_dist * 2.0, 0),
+        }
+
+    def get_all_facilities(self) -> list[dict]:
+        """Return all facilities for dashboard display."""
+        return self._facilities
+
+    @property
+    def is_loaded(self) -> bool:
+        return self._loaded
+
+    @property
+    def facility_count(self) -> int:
+        return len(self._facilities)
