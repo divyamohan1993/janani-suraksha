@@ -31,6 +31,12 @@ class Settings(BaseSettings):
     telegram_bot_token: str = ""  # From @BotFather
     telegram_chat_id: str = ""    # Target chat/group ID
 
+    # Gemini API (for future NLP features)
+    gemini_api_key: str = ""
+
+    # Consent management
+    consent_hmac_secret: str = ""
+
     model_config = {"env_prefix": "JANANI_", "env_file": ".env"}
 
 @lru_cache

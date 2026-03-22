@@ -5,10 +5,10 @@ Implements the Count-Min Sketch probabilistic data structure
 the count-min sketch and its applications") for estimating blood
 unit availability across health facilities.
 
-Novel application: No prior art exists for applying Count-Min Sketch
-to healthcare inventory estimation. Traditional blood bank systems
-require centralized databases with exact counts. This approach enables
-approximate inventory queries across distributed facilities with:
+Applies Count-Min Sketch to healthcare inventory estimation, building
+on prior work in privacy-preserving record linkage and approximate
+data structures for health systems. This approach enables approximate
+inventory queries across distributed facilities with:
 - O(1) update time per stock change
 - O(1) query time per availability check
 - Sub-linear space: O(w x d) where w=width, d=depth
@@ -101,6 +101,51 @@ class BloodBankSketch:
             bt: CountMinSketch(width, depth) for bt in BLOOD_TYPES
         }
         self._facility_registry: dict[str, dict] = {}  # facility_id -> metadata
+        self._last_reported: dict[str, int] = {}  # key -> last reported absolute stock
+
+    def load_real_blood_banks(self, path: str) -> int:
+        """Load real blood bank data from data/real_blood_banks.json.
+
+        Registers geocoded blood banks as facilities in the sketch network.
+        Returns number of blood banks registered.
+
+        Data source: data.gov.in resource fced6df9-a360-4e08-8ca0-f283fc74ce15.
+        """
+        import json
+        from pathlib import Path
+
+        p = Path(path)
+        if not p.exists():
+            return 0
+
+        with open(p) as f:
+            blood_banks = json.load(f)
+
+        count = 0
+        for i, bank in enumerate(blood_banks):
+            if "latitude" not in bank or "longitude" not in bank:
+                continue
+
+            bank_id = f"BB-{i + 1:05d}"
+            self.register_facility(
+                facility_id=bank_id,
+                name=bank.get("name", ""),
+                latitude=bank["latitude"],
+                longitude=bank["longitude"],
+                district=bank.get("district", ""),
+            )
+
+            # Seed initial stock based on components_available field
+            components = bank.get("components_available", "").lower()
+            if components:
+                # If components are listed, assume moderate availability
+                for bt in BLOOD_TYPES:
+                    if "whole blood" in components or "packed" in components or bt.lower().replace("+", "").replace("-", "") in components:
+                        self.report_stock(bank_id, bt, 10)
+
+            count += 1
+
+        return count
 
     def register_facility(self, facility_id: str, name: str,
                           latitude: float, longitude: float,
@@ -117,13 +162,18 @@ class BloodBankSketch:
         """Report current stock level for a blood type at a facility.
 
         This is an absolute report (not delta). The sketch tracks the
-        latest reported stock level.
+        latest reported stock level by computing the delta from the
+        previous report and applying that delta to the sketch.
         """
         if blood_type not in BLOOD_TYPES:
             raise ValueError(f"Invalid blood type: {blood_type}. Valid: {BLOOD_TYPES}")
 
         key = f"{facility_id}:{blood_type}"
-        self.sketches[blood_type].update(key, units)
+        previous = self._last_reported.get(key, 0)
+        delta = units - previous
+        self._last_reported[key] = units
+        if delta != 0:
+            self.sketches[blood_type].update(key, delta)
 
         return {
             "facility_id": facility_id,

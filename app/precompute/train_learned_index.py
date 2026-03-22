@@ -1,10 +1,7 @@
-"""Train the learned index MLP on precomputed hemoglobin trajectories.
+"""Trains a position-prediction MLP on the sorted trajectory array.
 
-Implements the training procedure for the learned index structure
-(Kraska et al., 2017, "The Case for Learned Index Structures").
-
-The MLP learns to approximate the CDF of sorted hemoglobin trajectories,
-mapping raw continuous features to positions in the sorted array.
+This follows the learned index paradigm (Kraska et al., arXiv:1712.01208, 2017)
+where a model approximates the CDF of sorted data to predict record positions.
 
 Architecture: Linear(5, 64) → ReLU → Linear(64, 32) → ReLU → Linear(32, 1) → Sigmoid
 

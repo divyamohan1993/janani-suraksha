@@ -42,25 +42,36 @@
     "skilled_attendant_delivery_pct": 0.897
   },
   "mmr_by_state": {
-    "Assam": 215,
+    "_data_period": "SRS 2021-23 (Registrar General of India, Special Bulletin on MMR, 2025)",
+    "Assam": 195,
     "Bihar": 118,
-    "Chhattisgarh": 137,
+    "Chhattisgarh": 122,
     "Gujarat": 57,
     "Haryana": 99,
     "Jharkhand": 56,
-    "Karnataka": 69,
+    "Karnataka": 65,
     "Kerala": 19,
-    "Madhya Pradesh": 170,
+    "Madhya Pradesh": 153,
     "Maharashtra": 33,
-    "Odisha": 119,
+    "Odisha": 105,
     "Punjab": 86,
     "Rajasthan": 96,
     "Tamil Nadu": 54,
     "Telangana": 43,
-    "Uttar Pradesh": 192,
-    "Uttarakhand": 89,
+    "Uttar Pradesh": 167,
+    "Uttarakhand": 82,
     "West Bengal": 103,
-    "India": 93
+    "India": 88
+  },
+  "maternal_deaths_annual": {
+    "value": 22500,
+    "data_period": "SRS 2021-23",
+    "source": "Registrar General of India, Special Bulletin on Maternal Mortality Ratio"
+  },
+  "asha_workers": {
+    "count": 1179382,
+    "source": "National Health Systems Resource Centre (NHSRC)",
+    "note": "Accredited Social Health Activists deployed under National Health Mission"
   },
   "causes_of_death_source": "WHO Global estimates (Say L et al, Lancet Glob Health 2014). For India-specific figures, see README (hemorrhage 47%, sepsis 12%, hypertensive 7% — from nationally representative surveys).",
   "causes_of_death": {
@@ -140,10 +151,14 @@
   },
   "hb_physiology": {
     "normal_decline_per_week": 0.04,
+    "normal_decline_source": "Bothwell TH, Am J Clin Nutr 2000;72(1):257S-264S",
     "hemodilution_peak_week": 30,
+    "hemodilution_source": "Hytten F, Clin Haematol 1985;14(3):601-612",
     "hemodilution_magnitude": 1.5,
     "ifa_supplementation_effect_per_week": 0.03,
+    "ifa_source": "Pena-Rosas JP et al, Cochrane Database Syst Rev 2015;(7):CD004736",
     "dietary_iron_effect_per_week": 0.015,
-    "source": "WHO Guideline: Daily iron and folic acid supplementation in pregnant women (2012)"
+    "dietary_source": "Haider BA, Bhutta ZA, Cochrane Database Syst Rev 2017;(4):CD004905",
+    "note": "These are MODEL parameters derived from published research, not direct patient measurements"
   }
 }

@@ -14,7 +14,9 @@ Reference:
 - Dwork C, "Differential Privacy", ICALP 2006
 - Dwork C & Roth A, "The Algorithmic Foundations of Differential Privacy", 2014
 
-Novel: No prior art for differential privacy in maternal health dashboards.
+Applies differential privacy to maternal health dashboards, building on
+prior work in privacy-preserving health analytics (e.g., COVID dashboards,
+federated health data systems).
 
 DPDP Act 2023 alignment:
 - Section 8(7): Data minimization — DP ensures minimum necessary precision

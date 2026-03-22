@@ -21,7 +21,7 @@ Medical calibration sources (inherited from RiskScoringEngine):
     - NFHS-5 (2019-21): National Family Health Survey, 724,115 women
     - SRS 2019-21: Sample Registration System maternal mortality data
     - WHO 2016: Recommendations on Antenatal Care
-    - ACOG 2019: Gestational Hypertension and Preeclampsia guidelines
+    - ACOG 2020: Gestational Hypertension and Preeclampsia guidelines (Practice Bulletin #222)
 """
 
 from __future__ import annotations
@@ -505,7 +505,7 @@ class AttentionWeightedAttribution:
             3.0,   # <18: Ganchimeg T et al, BJOG 2014;121(s1):40-48
             1.0,   # 18-26: Reference
             1.0,   # 26-31: Reference
-            1.5,   # 31-36: Lean SC et al, PLoS Med 2017;14(10):e1002413
+            1.5,   # 31-36: Lean SC et al, PLoS One 2017;12(10):e0186287
             3.5,   # >36: Lean SC et al 2017 + Laopaiboon M et al, Lancet Glob Health 2014;2(4):e112
         ],
         "parity": [

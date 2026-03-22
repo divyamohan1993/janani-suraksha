@@ -89,38 +89,30 @@ async def lifespan(app: FastAPI):
     # error bound e/256 * N ≈ 1.06% of total updates with 98.2% confidence
     blood_bank = BloodBankSketch(width=256, depth=4)
 
-    # Register all facilities from referral engine into the blood bank network
+    # Register all facilities from referral engine that have blood bank status
     for facility in referral_engine.get_all_facilities():
+        if facility.get("blood_bank_status") == "unavailable":
+            continue
         blood_bank.register_facility(
             facility_id=facility["facility_id"],
             name=facility["name"],
             latitude=facility["latitude"],
             longitude=facility["longitude"],
-            district=facility.get("facility_id", "").split("-")[1] if "-" in facility.get("facility_id", "") else "",
+            district=facility.get("district", ""),
         )
 
-    # Seed with demo stock data based on facility blood_bank_status
-    import random
-    random.seed(42)  # Deterministic demo data
-    blood_types = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"]
-    # Indian blood type distribution (approx): O+ 36%, B+ 28%, A+ 22%, AB+ 7%
-    # Negative types are ~8% of each positive type
-    stock_weights = {"O+": 1.0, "B+": 0.85, "A+": 0.75, "AB+": 0.5,
-                     "O-": 0.3, "B-": 0.25, "A-": 0.2, "AB-": 0.15}
-    for facility in referral_engine.get_all_facilities():
-        fid = facility["facility_id"]
-        status = facility.get("blood_bank_status", "unavailable")
-        if status == "unavailable":
-            continue
-        for bt in blood_types:
-            base = 20 if status == "available" else 8  # low_stock
-            units = max(0, int(base * stock_weights[bt] + random.randint(-3, 5)))
-            if units > 0:
-                blood_bank.report_stock(fid, bt, units)
+    # Load real blood bank data from data.gov.in if available
+    # Source: resource fced6df9-a360-4e08-8ca0-f283fc74ce15
+    real_bb_path = data_dir / "real_blood_banks.json"
+    if real_bb_path.exists():
+        bb_count = blood_bank.load_real_blood_banks(str(real_bb_path))
+        logger.info(f"Loaded {bb_count} real blood banks from data.gov.in")
+    else:
+        logger.warning(f"Real blood bank data not found at {real_bb_path}")
 
     set_blood_bank(blood_bank)
     logger.info(f"Blood bank CMS initialized: {blood_bank.registered_facilities} facilities, "
-                f"{blood_bank.total_updates} stock reports seeded")
+                f"{blood_bank.total_updates} stock reports from real data")
 
     # Initialize assessment persistence
     assessment_store = AssessmentStore()

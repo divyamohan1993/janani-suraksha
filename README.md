@@ -8,7 +8,7 @@
 [![Cloud Run](https://img.shields.io/badge/GCP-Cloud%20Run-blue.svg)]()
 [![Terraform](https://img.shields.io/badge/IaC-Terraform-purple.svg)]()
 
-**JananiSuraksha** converts India's ASHA worker network from a passive registration system into an active predictive intelligence network. Three O(1) engines — risk scoring, emergency referral routing, and anemia progression prediction — operate in constant time through aggressive precomputation, enabling instant maternal health risk assessment on any device. Built on published medical evidence from NFHS-5, WHO, Cochrane, Lancet, and ACOG, with 10,065 real facilities from data.gov.in, real Telegram alerts, Google Maps navigation, and voice input in 12 Indian languages.
+**JananiSuraksha** converts India's ASHA worker network from a passive registration system into an active predictive intelligence network. Three constant-time engines — risk scoring, emergency referral routing, and anemia progression prediction — operate through aggressive precomputation, enabling instant maternal health risk assessment on any device. Built on published medical evidence from NFHS-5, WHO, Cochrane, Lancet, and ACOG, with real facilities from data.gov.in National Hospital Directory (with geocoordinates), 2,823 blood banks, real Telegram alerts, Google Maps navigation, and voice input in 12 Indian languages.
 
 🌐 **Live Demo**: [janani-suraksha on Cloud Run](https://janani-suraksha-pax2obvj3a-el.a.run.app)
 📊 **Dashboard**: [District Health Officer View](https://janani-suraksha-pax2obvj3a-el.a.run.app/dashboard)
@@ -39,12 +39,12 @@
 
 ## The Problem
 
-- **23,800 maternal deaths annually** in India — one every 22 minutes
-- **1 million ASHA workers** visit every pregnant woman monthly
+- **~22,500 maternal deaths annually** in India — one every 23 minutes (SRS 2021-23, MMR 88/100,000)
+- **1.18 million ASHA workers** visit every pregnant woman monthly
 - **Zero** have an AI tool to predict which pregnancies will turn dangerous
-- **80% of these deaths are preventable** (WHO)
+- **Most of these deaths are preventable**, as the health-care solutions to prevent or manage complications are well known (WHO)
 
-## Three O(1) Engines
+## Three Constant-Time Engines
 
 ### Engine 1: Risk Scoring (Multiplicative Relative Risk)
 - 70,000 precomputed multiplicative relative risk entries
@@ -53,15 +53,15 @@
 - ~33MB on disk, <5ms response time
 
 ### Engine 2: Emergency Referral Routing
-- 10,065 real health facilities from data.gov.in (Ministry of Health & Family Welfare) across 23 Indian states, with Google Maps geocoding and one-click navigation
-- Precomputed spatial nearest-neighbor index per capability level
+- Real health facilities from data.gov.in National Hospital Directory (Ministry of Health & Family Welfare) with geocoordinates, across 21 states and 2 Union Territories, with Google Maps one-click navigation
+- Precomputed spatial nearest-neighbor index per capability level (O(1) primary lookup; O(n) backup scan for edge cases)
 - Routes to nearest FUNCTIONAL facility (not just nearest)
-- Considers: specialist availability, blood bank, OT status
+- Considers: specialist availability, blood bank (2,823 from data.gov.in), OT status
 
 ### Engine 3: Anemia Progression Prediction (Learned Index)
 - Learned index MLP (2-layer, 5→64→32→1, 2,497 params) predicts position in sorted trajectory array — O(1)
 - 7,480 hemoglobin trajectory profiles from WHO-calibrated physiological model
-- First known application of learned index structures (Kraska et al., 2017) to healthcare
+- Novel application of neural position prediction for hemoglobin trajectory lookup (inspired by Kraska et al., 2017; implemented as standard MLP regression)
 - Shows compliance impact: "With 90% IFA, Hb improves from 7.2 to 9.8 g/dL"
 - Early warning weeks before crisis
 
@@ -84,7 +84,7 @@
 │ Engine 1:    │ │ Engine 2: │ │ Engine 3:    │
 │ Risk Scoring │ │ Referral  │ │ Anemia       │
 │ (70K entries)│ │ Routing   │ │ Prediction   │
-│ O(1) lookup  │ │ (10,065   │ │ (7,480       │
+│ O(1) lookup  │ │ (Real     │ │ (7,480       │
 │              │ │ facilities│ │ trajectories)│
 │ Relative   │ │ Spatial   │ │ Learned      │
 │ Risk Model │ │ Index)    │ │ Index)       │
@@ -227,9 +227,9 @@ Six security layers:
 | Method | Path | Description |
 |--------|------|-------------|
 | GET | `/api/v1/health` | Health check + engine status |
-| POST | `/api/v1/risk-score` | O(1) risk scoring |
-| POST | `/api/v1/referral` | O(1) emergency referral routing |
-| POST | `/api/v1/anemia-predict` | O(1) anemia progression prediction |
+| POST | `/api/v1/risk-score` | Constant-time risk scoring |
+| POST | `/api/v1/referral` | Emergency referral routing |
+| POST | `/api/v1/anemia-predict` | Constant-time anemia progression prediction |
 | POST | `/api/v1/assessment` | Full ASHA worker assessment flow |
 | GET | `/api/v1/facilities` | List all facilities |
 | GET | `/api/v1/nearby-facilities` | Find nearby real facilities (data.gov.in) |
@@ -283,7 +283,7 @@ Voice input available in 12 Indian languages. No typing needed.
 
 ## Evidence Base
 
-**Real data**: Facility data (10,065 facilities) is sourced from data.gov.in (Government of India, Ministry of Health & Family Welfare). Geocoding is provided by Google Maps.
+**Real data**: Facility data from data.gov.in National Hospital Directory (Government of India, Ministry of Health & Family Welfare) with geocoordinates. Blood bank data from data.gov.in (2,823 blood banks). Risk model calibrated from published literature (NFHS-5, WHO, Cochrane, Lancet, ACOG). Hemoglobin trajectories generated from a WHO-calibrated physiological model (not patient data).
 
 **Research-backed risk model**: Multiplicative relative risk model (medical standard) with all 12 risk factor weights cross-validated against 5 independent data sources. Every weight falls within published confidence intervals.
 
@@ -301,15 +301,15 @@ All 12 risk factor weights are cross-validated against 5 independent medical dat
 |--------|------|---------------|
 | **NFHS-5** (2019-21) | National survey, 724,115 women | Anemia prevalence, risk factor distributions |
 | **WHO** (2016) | ANC guidelines | Risk factor relative risks, anemia thresholds |
-| **Cochrane Reviews** | Systematic reviews | Iron supplementation (CD004736), anemia outcomes (CD009997) |
+| **Cochrane Reviews** | Systematic reviews | Iron supplementation (CD004736), intermittent iron supplementation (CD009997) |
 | **Lancet** | Meta-analyses | Age-specific maternal mortality (2014;384:980-1004) |
-| **ACOG** (2019) | Practice bulletins | Hypertension classification (#222) |
+| **ACOG** (2020) | Practice bulletins | Hypertension classification (#222) |
 
 **Result**: 12/12 risk factors fall within published confidence intervals.
 
 ## Roadmap
 
-- [x] Three O(1) engines (70K + 10,065 real facilities + 7,480 entries)
+- [x] Three constant-time engines (70K + real facilities from data.gov.in + 7,480 entries)
 - [x] Full-stack web application on GCP Cloud Run
 - [x] 12/12 risk factors cross-validated against 5 independent data sources (NFHS-5, WHO, Cochrane, Lancet, ACOG)
 - [x] 34/34 tests passing, defense-in-depth security
@@ -333,4 +333,4 @@ MIT License — see [LICENSE](LICENSE) for details.
 
 ---
 
-> **Patent Pending** — O(1) Multiplicative Relative Risk Scoring, Precomputed Facility-Capability Spatial Index, and Learned Index Hemoglobin Trajectory Prediction.
+> **Novel System Architecture** — O(1) Multiplicative Relative Risk Scoring, Precomputed Facility-Capability Spatial Index, and Neural Hemoglobin Trajectory Prediction.

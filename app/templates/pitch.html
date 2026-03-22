@@ -143,16 +143,16 @@
     <section class="slide min-h-screen flex items-center justify-center bg-gray-900 text-white relative" id="slide-2" @click="nextSlide()">
         <div class="max-w-5xl mx-auto px-6">
             <p class="text-sm font-bold uppercase tracking-widest text-saffron mb-6">The Problem</p>
-            <h2 class="text-3xl sm:text-5xl font-black leading-tight mb-4">Every 22 minutes, an Indian mother dies from a <span class="text-red-400">preventable</span> complication.</h2>
+            <h2 class="text-3xl sm:text-5xl font-black leading-tight mb-4">Every 23 minutes, an Indian mother dies from a <span class="text-red-400">preventable</span> complication.</h2>
             <p class="text-xl sm:text-2xl text-gray-400 mb-8">India built the world's largest community health worker network. Then gave them paper and a pen.</p>
 
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-10">
                 <div class="bg-red-900 bg-opacity-40 rounded-2xl p-6 text-center border border-red-800">
-                    <p class="text-5xl sm:text-6xl font-black text-red-400">23,800</p>
-                    <p class="text-lg text-gray-300 mt-2">deaths per year</p>
+                    <p class="text-5xl sm:text-6xl font-black text-red-400">~22,500</p>
+                    <p class="text-lg text-gray-300 mt-2">deaths per year (SRS 2021-23, MMR 88)</p>
                 </div>
                 <div class="bg-orange-900 bg-opacity-40 rounded-2xl p-6 text-center border border-orange-800">
-                    <p class="text-5xl sm:text-6xl font-black text-saffron">1M</p>
+                    <p class="text-5xl sm:text-6xl font-black text-saffron">1.18M</p>
                     <p class="text-lg text-gray-300 mt-2">ASHA workers visit every pregnant woman monthly</p>
                 </div>
                 <div class="bg-gray-800 rounded-2xl p-6 text-center border border-gray-700">
@@ -162,7 +162,7 @@
                 </div>
             </div>
 
-            <p class="text-xl sm:text-2xl text-gray-300 mb-8"><span class="text-white font-bold">80% of these deaths are preventable</span> &mdash; if detected and reached in time. <span class="text-gray-500">(WHO)</span></p>
+            <p class="text-xl sm:text-2xl text-gray-300 mb-8"><span class="text-white font-bold">Most of these deaths are preventable</span>, as the health-care solutions to prevent or manage complications are well known &mdash; if detected and reached in time. <span class="text-gray-500">(WHO)</span></p>
 
             <div class="flex flex-col sm:flex-row items-center justify-center gap-4 text-lg">
                 <span class="bg-red-800 bg-opacity-50 px-5 py-3 rounded-xl font-semibold border border-red-700">Delay 1: Deciding</span>
@@ -218,7 +218,7 @@
     <section class="slide min-h-screen flex items-center justify-center bg-india-navy text-white relative" id="slide-4" @click="nextSlide()">
         <div class="max-w-5xl mx-auto px-6">
             <p class="text-sm font-bold uppercase tracking-widest text-saffron mb-6">Underlying Magic</p>
-            <h2 class="text-3xl sm:text-5xl font-black leading-tight mb-4">Three O(1) engines.<br>All constant-time. All precomputed.</h2>
+            <h2 class="text-3xl sm:text-5xl font-black leading-tight mb-4">Three constant-time engines.<br>All precomputed. All fast.</h2>
             <p class="text-xl text-blue-200 mb-10">Addressing a capability gap — no comparable predictive tool currently exists for ASHA workers.</p>
 
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
@@ -228,9 +228,9 @@
                     <p class="text-blue-200">Bayesian risk entries &mdash; single hash lookup. Beta-Binomial conjugate priors.</p>
                 </div>
                 <div class="bg-white bg-opacity-10 backdrop-blur rounded-2xl p-6 border border-white border-opacity-20">
-                    <p class="text-india-green font-black text-4xl mb-2">10,065</p>
+                    <p class="text-india-green font-black text-4xl mb-2">30,284+</p>
                     <h3 class="text-xl font-bold mb-2">Referral Routing Engine</h3>
-                    <p class="text-blue-200">Real facilities from data.gov.in across 23 states. Google Maps geocoding + navigation. Capability matching.</p>
+                    <p class="text-blue-200">Real geocoded facilities from data.gov.in National Hospital Directory. Geocoordinates + Google Maps navigation. Capability matching.</p>
                 </div>
                 <div class="bg-white bg-opacity-10 backdrop-blur rounded-2xl p-6 border border-white border-opacity-20">
                     <p class="text-yellow-400 font-black text-4xl mb-2">7,480</p>
@@ -323,7 +323,7 @@
         <div class="max-w-5xl mx-auto px-6">
             <p class="text-sm font-bold uppercase tracking-widest text-saffron mb-6">Go-to-Market Plan</p>
             <h2 class="text-3xl sm:text-4xl font-black text-gray-900 leading-tight mb-3">From 50 ASHAs to 27 million pregnancies</h2>
-            <p class="text-xl text-gray-600 mb-10">We don't need to convince 1 million ASHAs. We need to convince 1 District Health Officer.</p>
+            <p class="text-xl text-gray-600 mb-10">We don't need to convince 1.18 million ASHAs. We need to convince 1 District Health Officer.</p>
 
             <div class="space-y-4 mb-10">
                 <div class="flex items-start gap-4">
@@ -428,7 +428,7 @@
                             <td class="py-3 px-4 font-black text-saffron">JananiSuraksha</td>
                             <td class="py-3 px-4 text-green-400 font-bold">Predictive O(1)</td>
                             <td class="py-3 px-4 text-green-400 font-bold">Smart routing</td>
-                            <td class="py-3 px-4 text-green-400 font-bold">10,065 facilities</td>
+                            <td class="py-3 px-4 text-green-400 font-bold">30,284+ facilities</td>
                             <td class="py-3 px-4 text-green-400 font-bold">Yes</td>
                             <td class="py-3 px-4 text-green-400 font-bold">22 languages</td>
                         </tr>
@@ -482,7 +482,7 @@
             <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-6">
                 <div class="flex items-center gap-3 bg-white rounded-lg p-3 border border-green-200">
                     <span class="text-lg text-india-green flex-shrink-0">&#10003;</span>
-                    <div><p class="text-sm font-bold text-gray-900">Three O(1) engines operational</p><p class="text-xs text-gray-500">70K risk + 10,065 facilities + 7,480 anemia profiles</p></div>
+                    <div><p class="text-sm font-bold text-gray-900">Three constant-time engines operational</p><p class="text-xs text-gray-500">70K risk + real facilities + 7,480 anemia profiles</p></div>
                 </div>
                 <div class="flex items-center gap-3 bg-white rounded-lg p-3 border border-green-200">
                     <span class="text-lg text-india-green flex-shrink-0">&#10003;</span>
@@ -494,7 +494,7 @@
                 </div>
                 <div class="flex items-center gap-3 bg-white rounded-lg p-3 border border-green-200">
                     <span class="text-lg text-india-green flex-shrink-0">&#10003;</span>
-                    <div><p class="text-sm font-bold text-gray-900">10,065 real facilities (data.gov.in)</p><p class="text-xs text-gray-500">23 states, Google Maps navigation</p></div>
+                    <div><p class="text-sm font-bold text-gray-900">Real facilities from data.gov.in</p><p class="text-xs text-gray-500">21 states + 2 UTs, Google Maps navigation</p></div>
                 </div>
                 <div class="flex items-center gap-3 bg-white rounded-lg p-3 border border-green-200">
                     <span class="text-lg text-india-green flex-shrink-0">&#10003;</span>

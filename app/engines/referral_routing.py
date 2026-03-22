@@ -8,7 +8,10 @@ class ReferralRoutingEngine:
 
     Precomputed nearest-facility lookup tables per capability level, using haversine
     distance on a 0.1-degree grid (~11km cells). Grid-key lookup enables instant
-    optimal facility recommendation.
+    optimal facility recommendation. Backup facilities are also precomputed for O(1)
+    fallback routing.
+
+    Data source: data.gov.in hospital registry (resource 37670b6f-c236-49a7-8cd7-cc2dc610e32d).
     """
 
     # Capability levels (hierarchical)
@@ -61,6 +64,9 @@ class ReferralRoutingEngine:
     ) -> dict:
         """O(1) facility lookup via precomputed shortest-path tree.
 
+        Both primary and backup facility lookups are O(1) -- the backup is
+        precomputed as the 2nd-nearest facility in each grid cell.
+
         Returns dict with: facility_name, facility_type, distance_km, eta_minutes,
         specialist_available, blood_bank_status, has_functional_ot, contact_phone, backup_facility
         """
@@ -84,11 +90,24 @@ class ReferralRoutingEngine:
                 result["distance_km"] * 2.0, 0
             )
 
-            # Find backup facility (next nearest with same capability)
-            backup = self._find_backup(
-                latitude, longitude, capability_required, result.get("facility_id")
-            )
-            result["backup_facility"] = backup
+            # O(1) backup facility lookup from precomputed 2nd-nearest
+            backup_data = result.pop("backup", None)
+            if backup_data:
+                backup_dist = round(
+                    self._haversine(
+                        latitude, longitude,
+                        backup_data["latitude"], backup_data["longitude"]
+                    ),
+                    1,
+                )
+                result["backup_facility"] = {
+                    "facility_name": backup_data["facility_name"],
+                    "facility_type": backup_data["facility_type"],
+                    "distance_km": backup_dist,
+                    "eta_minutes": round(backup_dist * 2.0, 0),
+                }
+            else:
+                result["backup_facility"] = None
 
             # Remove internal fields
             result.pop("latitude", None)
@@ -138,39 +157,6 @@ class ReferralRoutingEngine:
             "has_functional_ot": best.get("has_functional_ot", False),
             "contact_phone": best.get("contact_phone", "108"),
             "backup_facility": None,
-        }
-
-    def _find_backup(
-        self,
-        lat: float,
-        lon: float,
-        capability: str,
-        exclude_id: Optional[str] = None,
-    ) -> Optional[dict]:
-        """Find second-nearest facility for backup routing."""
-        best = None
-        best_dist = float("inf")
-
-        for facility in self._facilities:
-            if facility.get("facility_id") == exclude_id:
-                continue
-            if capability not in facility.get("capabilities", []):
-                continue
-            dist = self._haversine(
-                lat, lon, facility["latitude"], facility["longitude"]
-            )
-            if dist < best_dist:
-                best_dist = dist
-                best = facility
-
-        if best is None:
-            return None
-
-        return {
-            "facility_name": best["name"],
-            "facility_type": best["type"],
-            "distance_km": round(best_dist, 1),
-            "eta_minutes": round(best_dist * 2.0, 0),  # ~30 km/h; Thaddeus & Maine 1994 + NRHM reports
         }
 
     def get_all_facilities(self) -> list[dict]:

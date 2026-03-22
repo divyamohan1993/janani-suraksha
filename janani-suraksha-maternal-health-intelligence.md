@@ -1,6 +1,6 @@
 # JananiSuraksha — AI-Powered Maternal Health Risk Intelligence & Safe Delivery Navigator
 
-> **Type:** Patent
+> **Type:** Technical Architecture Document
 > **Status:** Draft
 > **Date:** 2026-03-04
 > **Author(s):** Divya Mohan
@@ -9,7 +9,7 @@
 
 ## Abstract
 
-JananiSuraksha is an AI-powered maternal health risk intelligence platform that predicts high-risk pregnancies, optimizes emergency obstetric referral routing, and provides continuous antenatal monitoring through ASHA worker smartphones — addressing India's maternal mortality crisis where 23,800 women die annually from preventable obstetric complications. India's Maternal Mortality Ratio (MMR) stands at 93 per 100,000 live births (SRS 2019-21), with the poorest states bearing catastrophic burden: Assam (215), Uttar Pradesh (192), Madhya Pradesh (170). The fundamental failure is the "three delays" — delay in deciding to seek care, delay in reaching a facility, and delay in receiving adequate treatment — which collectively account for 80%+ of maternal deaths. Yet India has 1 million ASHA workers who visit every pregnant woman monthly, but they lack any AI tool to predict which pregnancies will turn dangerous. JananiSuraksha introduces three novel technical contributions: (1) **O(1) Maternal Risk Scoring via Precomputed Multiplicative Relative Risk Tables** that map 50,000+ combinations of maternal risk factors (age, parity, hemoglobin, blood pressure, gestational week, BMI, complication history) to literature-calibrated risk scores retrievable via single hash-indexed table lookup, enabling ASHA workers to instantly classify pregnancies as low/medium/high/critical risk from a 10-field voice questionnaire; (2) **O(1) Emergency Referral Routing via Precomputed Facility-Capability Shortest-Path Trees** that model India's health facility network (Sub-centres → PHCs → CHCs → District Hospitals → Medical Colleges) as a directed weighted graph with real-time capability attributes (specialist availability, blood bank status, functional OT, ambulance availability), with precomputed spatial nearest-neighbor lookup tables enabling instant optimal facility recommendation given a mother's location and required care level; and (3) **O(1) Anemia Progression Prediction via Precomputed Hemoglobin Trajectory Lookup Tables** that tracks hemoglobin levels across antenatal visits and uses a learned index structure to map (initial_Hb, gestational_week, iron_supplementation_compliance, dietary_pattern) to predicted Hb trajectory and intervention urgency in constant time. Built on GCP with Gemini APIs, with planned integration for Sarvam AI voice interface and Gemma 3n E2B offline inference. Deployed at jananisuraksha.dmj.one.
+JananiSuraksha is an AI-powered maternal health risk intelligence platform that predicts high-risk pregnancies, optimizes emergency obstetric referral routing, and provides continuous antenatal monitoring through ASHA worker smartphones — addressing India's maternal mortality crisis where ~22,500 women die annually from preventable obstetric complications. India's Maternal Mortality Ratio (MMR) stands at 88 per 100,000 live births (SRS 2021-23), with the poorest states bearing catastrophic burden: Assam (195), Uttar Pradesh (167), Madhya Pradesh (153). The fundamental failure is the "three delays" — delay in deciding to seek care, delay in reaching a facility, and delay in receiving adequate treatment — which collectively account for most maternal deaths. Yet India has 1.18 million ASHA workers who visit every pregnant woman monthly, but they lack any AI tool to predict which pregnancies will turn dangerous. JananiSuraksha introduces three novel technical contributions: (1) **O(1) Maternal Risk Scoring via Precomputed Multiplicative Relative Risk Tables** that map 50,000+ combinations of maternal risk factors (age, parity, hemoglobin, blood pressure, gestational week, BMI, complication history) to literature-calibrated risk scores retrievable via single hash-indexed table lookup, enabling ASHA workers to instantly classify pregnancies as low/medium/high/critical risk from a 10-field voice questionnaire; (2) **O(1) Emergency Referral Routing via Precomputed Facility-Capability Shortest-Path Trees** that model India's health facility network (Sub-centres → PHCs → CHCs → District Hospitals → Medical Colleges) as a directed weighted graph with real-time capability attributes (specialist availability, blood bank status, functional OT, ambulance availability), with precomputed spatial nearest-neighbor lookup tables enabling instant optimal facility recommendation given a mother's location and required care level; and (3) **O(1) Anemia Progression Prediction via Precomputed Hemoglobin Trajectory Lookup Tables** that tracks hemoglobin levels across antenatal visits and uses a learned index structure to map (initial_Hb, gestational_week, iron_supplementation_compliance, dietary_pattern) to predicted Hb trajectory and intervention urgency in constant time. Built on GCP with Gemini APIs, with planned integration for Sarvam AI voice interface and Gemma 3n E2B offline inference. Deployed at jananisuraksha.dmj.one.
 
 ## Background
 
@@ -18,12 +18,12 @@ JananiSuraksha is an AI-powered maternal health risk intelligence platform that 
 India's mothers are dying — from complications that the world solved decades ago. Every hour, nearly 3 Indian women die during pregnancy or childbirth from causes that are almost entirely preventable.
 
 **The mortality crisis:**
-- **MMR of 93 per 100,000 live births** (Sample Registration System 2019-21) — India accounts for 12% of global maternal deaths
-- **~23,800 maternal deaths annually** — one every 22 minutes
+- **MMR of 88 per 100,000 live births (SRS 2021-23)** (Sample Registration System 2021-23) — India accounts for 12% of global maternal deaths
+- **~22,500 maternal deaths annually** — one every 23 minutes
 - **47% of deaths** from obstetric hemorrhage (post-partum bleeding), **12% from sepsis/infection**, **7% from hypertensive disorders** (eclampsia/pre-eclampsia) — all treatable if detected and reached in time
-- Assam MMR: **215**, Uttar Pradesh: **192**, Madhya Pradesh: **170** — some districts in these states have MMR exceeding **300**, comparable to sub-Saharan Africa
+- Assam MMR: **195**, Uttar Pradesh: **167**, Madhya Pradesh: **153** — some districts in these states have MMR exceeding **300**, comparable to sub-Saharan Africa
 - India's MMR target under SDG 3.1: **<70 by 2030** — current trajectory will miss this by 5+ years
-- WHO estimates that **80% of maternal deaths are preventable** with timely access to basic and emergency obstetric care
+- WHO states that **most maternal deaths are preventable** with timely access to basic and emergency obstetric care
 
 **The infrastructure vacuum:**
 - **66% specialist vacancies** at Community Health Centres (Rural Health Statistics 2021-22)
@@ -40,7 +40,7 @@ India's mothers are dying — from complications that the world solved decades a
 3. **Delay in receiving treatment**: Arriving at a CHC to find no specialist, no blood bank, no functional operation theatre. The referral chain adds another 2-4 hours.
 
 **What exists but falls short:**
-- **1 million ASHA workers** visit every pregnant woman monthly — the distribution network EXISTS but carries no intelligence
+- **1.18 million ASHA workers** visit every pregnant woman monthly — the distribution network EXISTS but carries no intelligence
 - **Janani Suraksha Yojana (JSY)** provides cash incentives for institutional delivery — improved institutional delivery rates from 39% to 79% but did NOT reduce MMR proportionally because the institutions themselves lack capability
 - **PMSMA** provides free ANC on the 9th of every month — but monthly check-ups miss rapid-onset complications (eclampsia can develop in 48 hours)
 - **Mother and Child Tracking System (MCTS)** digitizes registration but provides zero predictive intelligence — it is a registry, not a risk engine
@@ -73,7 +73,7 @@ India's mothers are dying — from complications that the world solved decades a
 
 ### Core Innovation
 
-JananiSuraksha converts India's ASHA network from a passive registration system into an active predictive intelligence network. Three novel systems make this possible — all operating in O(1) time at runtime through aggressive precomputation.
+JananiSuraksha converts India's ASHA network from a passive registration system into an active predictive intelligence network. Three novel systems make this possible — all operating in constant time at runtime through aggressive precomputation.
 
 **Innovation 1 — O(1) Maternal Risk Scoring via Precomputed Multiplicative Relative Risk Tables**
 
@@ -104,7 +104,7 @@ The risk weights are calibrated from published epidemiological research (NFHS-5,
 When a high-risk or emergency case is identified, the critical question is: "Which facility can actually handle this case RIGHT NOW?" A CHC without a gynecologist, blood bank, or functional OT is useless for an eclampsia case — sending a patient there wastes the golden hour.
 
 JananiSuraksha indexes India's health facility network via precomputed spatial nearest-neighbor lookup:
-- **Current implementation**: 200 facilities in Sitapur district (pilot), with 10,065 real facilities from data.gov.in available for nearby-facility search
+- **Current implementation**: 30,284 real geocoded facilities from data.gov.in National Hospital Directory
 - **Target scale**: 160,000+ Sub-centres, 31,000+ PHCs, 5,500+ CHCs, 800+ District Hospitals, 300+ Medical Colleges (from Rural Health Statistics)
 - **Facility attributes**: Specialist availability, blood bank status, functional OT, ambulance availability, capabilities (Basic EmOC, Comprehensive EmOC, Blood Transfusion, C-section, NICU)
 - **Spatial indexing**: Grid-based (0.1-degree resolution, ~11km cells) with haversine distance computation for nearest-facility matching per capability level
@@ -136,7 +136,7 @@ The learned index is a 2-layer MLP (5→64→32→1, 2,497 parameters, ~68 KB) t
 3. Retrieve predicted Hb at each future gestational week, risk level, and compliance impact scenarios
 4. Fallback chain: hash-based discretized index → analytical physiological model computation
 
-Key advantage over traditional hash-based lookup: the learned index accepts continuous inputs directly, eliminating the 25% collision rate inherent in discretization. The MLP generalizes to unseen input combinations via the learned function approximation. This is the first known application of learned index structures to any medical/healthcare domain.
+Key advantage over traditional hash-based lookup: the learned index accepts continuous inputs directly, eliminating the 25% collision rate inherent in discretization. The MLP generalizes to unseen input combinations via the learned function approximation. This applies the learned index paradigm to maternal health trajectory prediction.
 
 When predicted Hb drops below 7 g/dL (severe anemia threshold) at any future gestational week, the system triggers:
 - Alert to ASHA worker: "This mother's hemoglobin is declining. Without intervention, she will be severely anemic by week 34."
@@ -189,7 +189,7 @@ When predicted Hb drops below 7 g/dL (severe anemia threshold) at any future ges
 │  Precomputed JSON Data Layer (baked into container)       │
 │  risk_table.json (70K entries) │ facility_graph.json      │
 │  hb_trajectories.json (7,480 profiles)                   │
-│  real_facilities.json (10,065 facilities from data.gov.in)│
+│  real_facilities.json (30,284+ facilities from data.gov.in with geocoordinates)│
 └─────────────────────────────────────────────────────────┘
        │                  │                   │
        ▼                  ▼                   ▼
@@ -206,7 +206,7 @@ When predicted Hb drops below 7 g/dL (severe anemia threshold) at any future ges
 
 2. **Bayesian Risk Table Engine**: Precomputes 70,000 multiplicative relative risk entries stored as JSON. Hash function: `SHA256(age_bucket || parity || hb_range || bp_range || gest_week || bmi || complication)[:8]` → 8-byte key. Value: 64-byte struct (α, β, risk_score, risk_class, intervention_codes). Total memory: ~33 MB on disk as JSON (compact binary format would be ~9 MB). Risk weights are static, calibrated from published research.
 
-3. **Facility-Capability Graph Engine**: Current pilot indexes 200 facilities across Sitapur district with precomputed nearest-facility assignments for 5 capability levels across a 15×15 grid (225 cells). Separate real-facility search covers 10,065 facilities from data.gov.in across 23 states. Grid-based spatial index stored as JSON, loaded into memory at startup.
+3. **Facility-Capability Graph Engine**: Indexes 30,284 real geocoded facilities from data.gov.in National Hospital Directory across India, plus 2,823 blood banks with coordinates. Grid-based spatial index stored as JSON, loaded into memory at startup.
 
 4. **Hemoglobin Trajectory Precomputed Lookup**: Precomputed trajectory lookup table covering 7,480 profiles generated from a WHO-calibrated physiological model. Input: 5-dimensional discretized feature key. Output: position in sorted trajectory array via hash lookup. Analytical fallback computes trajectory on cache miss. No neural network — deterministic physiological model.
 
@@ -243,7 +243,7 @@ where $\mathbf{x} = (\text{Hb}, \text{gest\_week}, \text{IFA}, \text{diet}, \tex
 
 At query time: $\hat{p} = f_\theta(\mathbf{x})$, then local search over $[\hat{p} - \epsilon, \hat{p} + \epsilon]$ where $\epsilon = 20$ — O(1) bounded. Mean position error: 18.7 positions (Hb error ~0.04 g/dL, clinically negligible). Fallback chain: hash-based discretized index → analytical physiological model.
 
-Key novelty: First application of learned index structures to medical/healthcare prediction. Eliminates the 25% discretization collision rate inherent in hash-based lookup by accepting continuous inputs directly.
+Applies learned index paradigm (Kraska et al., 2017) to hemoglobin trajectory retrieval, accepting continuous clinical inputs directly. Eliminates the 25% discretization collision rate inherent in hash-based lookup.
 
 ### Implementation Details
 
@@ -312,7 +312,7 @@ Output: Risk classification, recommended actions, referral destination
 
 1. **Risk Table**: Hash map with 70,000 entries. Key: 8-byte hash of discretized factor vector. Value: struct {α: float32, β: float32, risk_score: float32, risk_class: uint8, intervention_codes: uint16[3]}. Total: ~33 MB as JSON on disk.
 
-2. **Facility Graph**: Adjacency list representation. 200 facilities (Sitapur pilot) + 10,065 real facilities from data.gov.in × average 4 edges = 800K edges. Node struct: {id, digipin, capabilities: bitfield, specialist_status: bitfield, blood_units: map<type, count>, ot_functional: bool, beds_available: uint16}. Edge struct: {target_id, distance_km: float32, road_quality: float32}. Total: ~50 MB.
+2. **Facility Graph**: Adjacency list representation. 30,284 real geocoded facilities from data.gov.in + 2,823 blood banks. Node struct: {id, digipin, capabilities: bitfield, specialist_status: bitfield, blood_units: map<type, count>, ot_functional: bool, beds_available: uint16}. Edge struct: {target_id, distance_km: float32, road_quality: float32}. Total: ~50 MB.
 
 3. **Shortest-Path Trees**: For each capability level (5 levels), a table mapping grid_cell → nearest_facility. 225 grid cells (15×15 grid for Sitapur district) × 5 capabilities × 8 bytes per entry = ~9 KB.
 
@@ -409,7 +409,7 @@ Deployment of JananiSuraksha in a target district will reduce the "first delay" 
 
 1. **Claim 3** (dependent on Claim 1): The method of Claim 1, wherein the Bayesian posterior risk scores are maintained separately for each administrative region, enabling regional calibration of risk thresholds based on local maternal mortality patterns.
 
-2. **Claim 4** (dependent on Claim 1): The method of Claim 1, further comprising predicting hemoglobin trajectory using a **learned index structure** (Kraska et al., 2017) — a 2-layer neural network (5→64→32→1, 2,497 parameters) trained to approximate the cumulative distribution function of a sorted array of 7,480 hemoglobin trajectory profiles, enabling O(1) anemia progression prediction from raw continuous features without discretization. The learned index accepts continuous inputs (initial Hb, gestational week, IFA compliance, dietary score, previous anemia) and predicts the approximate position in the sorted trajectory array, with bounded local search (±20 positions) refining to exact match. First known application of learned index structures to any medical/healthcare domain.
+2. **Claim 4** (dependent on Claim 1): The method of Claim 1, further comprising predicting hemoglobin trajectory using a **learned index structure** (Kraska et al., 2017) — a 2-layer neural network (5→64→32→1, 2,497 parameters) trained to approximate the cumulative distribution function of a sorted array of 7,480 hemoglobin trajectory profiles, enabling O(1) anemia progression prediction from raw continuous features without discretization. The learned index accepts continuous inputs (initial Hb, gestational week, IFA compliance, dietary score, previous anemia) and predicts the approximate position in the sorted trajectory array, with bounded local search (±20 positions) refining to exact match. Applies the learned index paradigm to maternal health hemoglobin trajectory prediction.
 
 3. **Claim 5** (dependent on Claim 2): The system of Claim 2, wherein the spatial nearest-neighbor lookup tables are incrementally updated upon receiving emergency facility status changes via a publish-subscribe messaging system, without requiring full recomputation. (Planned — not yet implemented in current version)
 
@@ -516,7 +516,7 @@ Maternal mortality remains a devastating global health challenge. According to t
 
 **Regional MMR comparisons (2023 WHO estimates):**
 - Sub-Saharan Africa: **~380 per 100,000** (highest globally)
-- Southern Asia: **~117 per 100,000** (India: 93 per SRS 2019-21)
+- Southern Asia: **~117 per 100,000** (India: 88 per SRS 2021-23)
 - Latin America & Caribbean: **~68 per 100,000**
 - High-income countries: **~10 per 100,000**
 
@@ -619,7 +619,7 @@ JananiSuraksha follows the same approach:
 ### Phase 3: Scale & Validation (Months 9-18)
 - [ ] Expand to full district (500+ ASHAs)
 - [ ] Conduct cluster-randomized controlled trial
-- [ ] File patent application under India CRI Guidelines 2025
+- [ ] Prepare technical architecture documentation
 - [ ] Partner with NHM for state-level adoption
 - [ ] Build integration with MCTS/RCH Portal for data interoperability
 
@@ -680,4 +680,4 @@ JananiSuraksha follows the same approach:
 - [YojanaSetu — AI Scheme Discovery](yojana-setu-scheme-discovery-engine.md) — auto-enrollment for JSY/PMMVY maternal benefit schemes
 - [JalDoot — Water Safety Intelligence](jal-doot-water-safety-intelligence.md) — safe drinking water for pregnant women
 
-**Keywords:** maternal-mortality, maternal-health, antenatal-care, ASHA-worker, Bayesian-risk-scoring, facility-routing, anemia-prediction, learned-index, Dijkstra, conjugate-prior, obstetric-emergency, India, GCP, Gemini, Sarvam-AI, patent
+**Keywords:** maternal-mortality, maternal-health, antenatal-care, ASHA-worker, Bayesian-risk-scoring, facility-routing, anemia-prediction, learned-index, Dijkstra, conjugate-prior, obstetric-emergency, India, GCP, Gemini, Sarvam-AI

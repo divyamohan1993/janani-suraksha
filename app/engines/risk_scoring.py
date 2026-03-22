@@ -15,7 +15,7 @@ class RiskScoringEngine:
     - NFHS-5 (2019-21): National Family Health Survey, 724,115 women
     - SRS 2019-21: Sample Registration System maternal mortality data
     - WHO 2016: Recommendations on Antenatal Care
-    - ACOG 2019: Gestational Hypertension and Preeclampsia guidelines
+    - ACOG 2020: Gestational Hypertension and Preeclampsia guidelines (Practice Bulletin #222)
     - Lancet 2014: Age-specific maternal mortality meta-analysis
     - WHO 2012: Iron and folic acid supplementation guidelines
     """
@@ -23,7 +23,7 @@ class RiskScoringEngine:
     # Discretization buckets (from spec)
     AGE_BUCKETS = [(0, 18), (18, 26), (26, 31), (31, 36), (36, 100)]  # 5 levels
     PARITY_BUCKETS = [(0, 1), (1, 3), (3, 5), (5, 100)]  # 4 levels
-    HB_BUCKETS = [(0, 7), (7, 9), (9, 11), (11, 12), (12, 100)]  # 5 levels
+    HB_BUCKETS = [(0, 7), (7, 10), (10, 11), (11, 12), (12, 100)]  # 5 levels (WHO pregnancy thresholds)
     BP_BUCKETS = ["normal", "elevated", "stage1", "stage2", "crisis"]  # 5 levels
     GEST_BUCKETS = [(0, 13), (13, 21), (21, 29), (29, 35), (35, 38), (38, 41), (41, 50)]  # 7 levels
     BMI_BUCKETS = [(0, 18.5), (18.5, 25), (25, 30), (30, 100)]  # 4 levels
@@ -71,7 +71,7 @@ class RiskScoringEngine:
     def _discretize_hb(hb: float) -> int:
         if hb < 7:
             return 0
-        if hb < 9:
+        if hb < 10:
             return 1
         if hb < 11:
             return 2
@@ -281,7 +281,7 @@ class RiskScoringEngine:
                 3.0,  # <18: Ganchimeg T et al, BJOG 2014;121(s1):40-48 (WHO Multi-country Survey)
                 1.0,  # 18-26: Reference group
                 1.0,  # 26-31: Reference group
-                1.5,  # 31-36: Lean SC et al, PLoS Med 2017;14(10):e1002413
+                1.5,  # 31-36: Lean SC et al, PLoS One 2017;12(10):e0186287
                 3.5,  # >36: Lean SC et al 2017 + Laopaiboon M et al, Lancet Glob Health 2014;2(4):e112
             ],
 
@@ -294,8 +294,8 @@ class RiskScoringEngine:
 
             "hb": [
                 8.0,  # <7 (severe anemia): Daru J et al, Lancet Glob Health 2018;6(5):e548-e554
-                3.0,  # 7-9 (moderate): Daru J et al 2018
-                1.5,  # 9-11 (mild): Rahman MM et al, Am J Clin Nutr 2016;103(2):495-504
+                3.0,  # 7-9.9 (moderate): Daru J et al 2018
+                1.5,  # 10-10.9 (mild): Rahman MM et al, Am J Clin Nutr 2016;103(2):495-504
                 1.0,  # 11-12: Reference
                 1.0,  # >12: Reference
             ],
@@ -328,9 +328,9 @@ class RiskScoringEngine:
             "comp": [
                 1.0,  # None: Reference
                 1.5,  # Prev C-section: Fitzpatrick KE et al, PLoS Med 2012;9(3):e1001184
-                4.0,  # Prev PPH: Ford JB et al, BJOG 2007;114(10):1235-1240
+                4.0,  # Prev PPH: Ford JB et al, Med J Aust 2007;187(7):391-393
                 5.0,  # Prev eclampsia: Sibai BM et al, Am J Obstet Gynecol 2005;192(5S):s126
-                6.0,  # Multiple: Composite from Ford 2007 + Sibai 2005
+                6.0,  # Multiple: Composite from Ford 2007 (Med J Aust) + Sibai 2005
             ],
         }
 
@@ -385,8 +385,8 @@ class RiskScoringEngine:
             ][age_idx],
             "hemoglobin": [
                 "<7 g/dL (severe anemia)",
-                "7-9 g/dL (moderate anemia)",
-                "9-11 g/dL (mild anemia)",
+                "7-9.9 g/dL (moderate anemia)",
+                "10-10.9 g/dL (mild anemia)",
                 "11-12 g/dL (normal)",
                 ">12 g/dL (normal)",
             ][hb_idx],

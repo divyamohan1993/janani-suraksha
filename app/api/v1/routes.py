@@ -654,7 +654,7 @@ async def risk_explain(factors: RiskFactors):
     reduce the patient's risk classification, normalized importance weights,
     and Bayesian credible intervals quantifying uncertainty.
 
-    Novel: First application of counterfactual XAI to multiplicative relative
+    Applies counterfactual XAI to multiplicative relative
     risk maternal health scoring.
     """
     if not _risk_engine:

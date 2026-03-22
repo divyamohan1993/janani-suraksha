@@ -46,8 +46,8 @@
       "our_rr": 3.0,
       "nfhs5": "18.8% prevalence; moderate anemia increases PPH risk 2-4x",
       "who": "WHO classifies Hb 7-9.9 as moderate anemia with RR 2-4 for complications",
-      "cochrane": "Cochrane CD009997: Moderate anemia RR 2.36 (95% CI: 1.60-3.48) for adverse birth outcomes",
-      "validation": "CONSISTENT \u2014 our RR=3.0 within Cochrane CI of 1.60-3.48"
+      "cochrane": "Daru J et al, Lancet Glob Health 2018;6(5):e548-e554: Moderate anemia RR 2.36 (95% CI: 1.60-3.48) for adverse birth outcomes. Note: Cochrane CD009997 is about intermittent iron supplementation, not anemia severity.",
+      "validation": "CONSISTENT \u2014 our RR=3.0 within Daru et al 2018 CI of 1.60-3.48"
     },
     "hypertension_stage2": {
       "our_rr": 5.0,

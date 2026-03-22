@@ -177,7 +177,11 @@ class RealFacilityFinder:
 
     def _fallback_datagov(self, lat: float, lon: float,
                            radius_km: float) -> list[dict]:
-        """Fallback to data.gov.in when Google Places is unavailable."""
+        """Fallback to data.gov.in when Google Places is unavailable.
+
+        Uses geocoordinates from _location_coordinates field (parsed at fetch time)
+        to compute real distances and sort by proximity.
+        """
         state = self._guess_state(lat, lon)
         raw = self._datagov_facilities.get(state, [])
         if not raw:
@@ -185,23 +189,45 @@ class RealFacilityFinder:
 
         results = []
         for f in raw:
-            nav_parts = [f["name"]]
-            if f.get("address"):
-                nav_parts.append(f["address"])
-            if f.get("district"):
-                nav_parts.append(f["district"])
-            nav_parts.append(state)
-            nav_parts.append("India")
-            query = ", ".join(nav_parts)
+            has_coords = "latitude" in f and "longitude" in f
+            distance = None
+
+            if has_coords:
+                distance = round(
+                    self._haversine(lat, lon, f["latitude"], f["longitude"]), 1
+                )
+                # Skip facilities outside radius
+                if distance > radius_km:
+                    continue
+                nav_url = (
+                    f"https://www.google.com/maps/dir/?api=1"
+                    f"&destination={f['latitude']},{f['longitude']}"
+                )
+            else:
+                nav_parts = [f["name"]]
+                if f.get("address"):
+                    nav_parts.append(f["address"])
+                if f.get("district"):
+                    nav_parts.append(f["district"])
+                nav_parts.append(state)
+                nav_parts.append("India")
+                query = ", ".join(nav_parts)
+                nav_url = f"https://www.google.com/maps/search/?api=1&query={urllib.parse.quote(query)}"
 
             results.append({
                 **f,
                 "state": state,
                 "source": "data.gov.in",
-                "distance_km": None,
-                "has_exact_location": False,
-                "navigation_url": f"https://www.google.com/maps/search/?api=1&query={urllib.parse.quote(query)}",
+                "distance_km": distance,
+                "has_exact_location": has_coords,
+                "navigation_url": nav_url,
             })
+
+        # Sort geocoded facilities by distance first, then non-geocoded
+        results.sort(key=lambda x: (
+            x["distance_km"] is None,
+            x["distance_km"] if x["distance_km"] is not None else float("inf"),
+        ))
 
         return results[:30]
 

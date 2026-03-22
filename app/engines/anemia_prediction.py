@@ -28,10 +28,10 @@ class AnemiaPredictionEngine:
 
     # WHO pregnancy hemoglobin thresholds
     # Source: WHO, "Haemoglobin concentrations for the diagnosis of anaemia", 2011 (WHO/NMH/NHD/MNM/11.1)
-    SEVERE_ANEMIA = 7.0   # WHO 2011: severe anemia in pregnancy
-    MODERATE_ANEMIA = 9.0  # WHO 2011: moderate anemia in pregnancy
-    MILD_ANEMIA = 11.0     # WHO 2011: mild anemia in pregnancy (Hb <11 g/dL)
-    NORMAL_HB = 12.0       # WHO 2011: normal hemoglobin
+    SEVERE_ANEMIA = 7.0    # WHO 2011: severe anemia in pregnancy (<7 g/dL)
+    MODERATE_ANEMIA = 10.0  # WHO 2011: moderate anemia in pregnancy (7.0-9.9 g/dL)
+    MILD_ANEMIA = 11.0     # WHO 2011: mild anemia in pregnancy (10.0-10.9 g/dL)
+    NORMAL_HB = 11.0       # WHO 2011: normal hemoglobin in pregnancy (>=11.0 g/dL)
 
     def __init__(self):
         self._trajectories: list[dict] = []
@@ -112,10 +112,12 @@ class AnemiaPredictionEngine:
     def _learned_index_lookup(self, initial_hb: float, gest_weeks: int,
                                ifa_compliance: float, dietary_score: float,
                                prev_anemia: bool) -> Optional[dict]:
-        """Use learned index MLP to find best-matching trajectory.
+        """Use learned index MLP to find best-matching precomputed trajectory.
 
-        The MLP predicts approximate position in sorted array.
-        Local search over ±max_error refines to best match.
+        The MLP predicts approximate position in the sorted trajectory array
+        directly from input features. Local search over +/-max_error positions
+        finds the closest match by comparing INPUT features (not analytical output),
+        avoiding redundant analytical computation.
         """
         predicted_pos = self._learned_index.predict_position(
             initial_hb, gest_weeks, ifa_compliance, dietary_score, prev_anemia
@@ -125,18 +127,29 @@ class AnemiaPredictionEngine:
         if not self._trajectories:
             return None
 
-        # Compute expected delivery Hb analytically for comparison
-        analytical = self._compute_trajectory(
-            initial_hb, gest_weeks, ifa_compliance, dietary_score, prev_anemia
-        )
-        target_hb = analytical["predicted_delivery_hb"]
+        # Input feature vector for comparison
+        query_features = [
+            initial_hb,
+            float(gest_weeks),
+            ifa_compliance,
+            dietary_score,
+            1.0 if prev_anemia else 0.0,
+        ]
 
-        # Local search: find trajectory with closest predicted delivery Hb
+        # Local search: find trajectory with closest INPUT features
         best_pos = predicted_pos
         best_diff = float("inf")
         for pos in range(lo, hi + 1):
             if 0 <= pos < len(self._trajectories):
-                diff = abs(self._trajectories[pos]["predicted_delivery_hb"] - target_hb)
+                traj = self._trajectories[pos]
+                # Compare by input features stored in each trajectory profile
+                diff = (
+                    abs(traj.get("initial_hb", 0) - query_features[0])
+                    + abs(traj.get("gest_weeks", 0) - query_features[1]) / 40.0
+                    + abs(traj.get("ifa_compliance", 0) - query_features[2])
+                    + abs(traj.get("dietary_score", 0) - query_features[3])
+                    + abs((1.0 if traj.get("prev_anemia", False) else 0.0) - query_features[4])
+                )
                 if diff < best_diff:
                     best_diff = diff
                     best_pos = pos

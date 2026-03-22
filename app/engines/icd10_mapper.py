@@ -7,9 +7,9 @@ diagnostic summaries from risk assessment outputs.
 ICD-10-CM codes used are from the 2026 code set, Chapter XV (O00-O9A):
 Pregnancy, childbirth and the puerperium.
 
-Novel: Automated mapping from a discretized multiplicative relative risk
-model's factor indices to ICD-10-CM codes with trimester-specific coding
-has no prior art in maternal health CDS systems.
+Applies automated mapping from a discretized multiplicative relative risk
+model's factor indices to ICD-10-CM codes with trimester-specific coding,
+building on prior work in clinical decision support code generation.
 """
 
 from typing import Optional
@@ -233,7 +233,7 @@ class ICD10Mapper:
         #  O09.61x - Supervision of young primigravida                     #
         #  O09.52x - Supervision of elderly multigravida                   #
         #  Sources: Ganchimeg T et al, BJOG 2014;121(s1):40-48            #
-        #           Lean SC et al, PLoS Med 2017;14(10):e1002413           #
+        #           Lean SC et al, PLoS One 2017;12(10):e0186287           #
         # ============================================================== #
         ("age", 0): {
             "codes": {

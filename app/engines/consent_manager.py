@@ -18,13 +18,15 @@ Legal basis:
 - DPDP Act 2023, Section 12: Data erasure rights
 - DPDP Rules 2025: Data fiduciary obligations
 
-Novel application: No prior art for HMAC-based purpose-limited consent tokens
-specifically designed for maternal health CDS under India's DPDP framework.
+Applies HMAC-based purpose-limited consent tokens to maternal health CDS
+under India's DPDP framework, building on established consent management
+patterns in health information systems.
 """
 
 import hashlib
 import hmac
 import json
+import os
 import time
 import uuid
 import threading
@@ -61,15 +63,30 @@ class ConsentManager:
         assert result["valid"]
     """
 
-    def __init__(self, secret_key: str = "janani-suraksha-dpdp-2023") -> None:
+    def __init__(self, secret_key: str | None = None) -> None:
         """Initialise the consent manager.
 
         Args:
-            secret_key: HMAC signing key. In production this MUST be
-                        sourced from a secrets manager (e.g. AWS SSM,
-                        HashiCorp Vault). The default is for dev/test only.
+            secret_key: HMAC signing key. If not provided, reads from the
+                        CONSENT_HMAC_SECRET environment variable. Raises
+                        RuntimeError if neither is available.
         """
-        self._secret_key: str = secret_key
+        if secret_key is not None:
+            self._secret_key: str = secret_key
+        else:
+            env_key = os.environ.get("CONSENT_HMAC_SECRET")
+            if env_key:
+                self._secret_key = env_key
+            else:
+                # Generate a random key for this process lifetime and warn
+                self._secret_key = os.urandom(32).hex()
+                import warnings
+                warnings.warn(
+                    "CONSENT_HMAC_SECRET not set. Using a random ephemeral key. "
+                    "Tokens will not survive process restarts. Set CONSENT_HMAC_SECRET "
+                    "in your environment for production use.",
+                    stacklevel=2,
+                )
         self._lock: threading.Lock = threading.Lock()
 
         # Bookkeeping (in-memory, lost on restart by design)

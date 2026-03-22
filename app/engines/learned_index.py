@@ -1,14 +1,12 @@
-"""Learned Index for O(1) hemoglobin trajectory prediction.
+"""Position-prediction MLP following the learned index paradigm (Kraska et al., 2017).
 
-Implements the learned index structure from Kraska et al. (2017),
-"The Case for Learned Index Structures" (arXiv:1712.01208), applied
-to maternal hemoglobin trajectory prediction — a novel application
-of learned indexes in healthcare.
+Reference: Kraska T et al., "The Case for Learned Index Structures",
+arXiv:1712.01208 (2017).
 
-A 2-layer MLP (5→64→32→1) approximates the CDF of sorted hemoglobin
+A 2-layer MLP (5->64->32->1) approximates the CDF of sorted hemoglobin
 trajectories, predicting the position of the best-matching trajectory
-from raw continuous features. Local binary search over ±max_error
-positions refines the match. Total query time: O(1) bounded.
+from raw continuous features. Local search over +/-max_error positions
+refines the match. Total query time: O(1) bounded.
 
 Key advantage over hash-based discretized lookup:
 - Accepts continuous inputs directly (no discretization collisions)

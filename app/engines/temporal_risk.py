@@ -9,9 +9,9 @@ This identifies the "risk crossover week" — the gestational week when the
 patient is predicted to transition to a higher risk level — enabling
 proactive intervention scheduling.
 
-Novel: No prior art for precomputed temporal risk trajectories that
-dynamically couple a multiplicative RR model with a learned-index-based
-anemia trajectory prediction.
+Applies precomputed temporal risk trajectories that dynamically couple a
+multiplicative RR model with a learned-index-based anemia trajectory
+prediction, building on prior work in dynamic risk scoring for obstetrics.
 """
 
 from typing import Optional

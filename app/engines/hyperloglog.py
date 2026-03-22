@@ -9,8 +9,10 @@ identity cannot be inferred from aggregate counts.
 Reference: Flajolet P et al., "HyperLogLog: the analysis of a near-optimal
 cardinality estimation algorithm", DMTCS, 2007.
 
-Novel application: No prior art for HyperLogLog in maternal health
-patient counting with privacy guarantees.
+Applies HyperLogLog to maternal health patient counting with privacy
+guarantees, building on prior work in privacy-preserving clinical data
+analysis (e.g., Bioinformatics 2021, HyperLogLog sketches for federated
+queries of clinical data repositories).
 """
 
 import hashlib

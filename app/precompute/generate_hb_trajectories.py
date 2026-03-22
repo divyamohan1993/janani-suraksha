@@ -1,9 +1,15 @@
-"""Generate precomputed hemoglobin trajectory array and lookup index.
+"""Generates hemoglobin trajectory profiles using a WHO-calibrated physiological model.
+
+Model parameters are derived from published research (Bothwell 2000,
+Pena-Rosas/Cochrane 2015, Hytten 1985). These are MODEL-DERIVED trajectories,
+not patient data. The model captures:
+  (1) baseline Hb decline of 0.04 g/dL/week from plasma volume expansion (Bothwell),
+  (2) IFA supplementation effect of 0.03 g/dL/week (Cochrane CD004736),
+  (3) Gaussian hemodilution nadir at week 30 (Hytten).
 
 Produces a sorted array of trajectory profiles covering all discretized
 feature combinations, plus an O(1) lookup index mapping feature keys
-to positions in the sorted array. Trajectories are generated from a
-WHO-calibrated physiological model, not from patient data.
+to positions in the sorted array.
 
 Usage:
     python -m app.precompute.generate_hb_trajectories
@@ -60,6 +66,11 @@ def generate() -> None:
                         result = engine._compute_trajectory(hb, gw, ifa, diet, anemia)
                         # Store trajectory profile (without current_hb which is input-specific)
                         profile = {
+                            "initial_hb": hb,
+                            "gest_weeks": gw,
+                            "ifa_compliance": ifa,
+                            "dietary_score": diet,
+                            "prev_anemia": anemia,
                             "predicted_delivery_hb": result["predicted_delivery_hb"],
                             "trajectory": result["trajectory"],
                             "risk_level": result["risk_level"],
