@@ -82,14 +82,34 @@ class RealFacilityFinder:
                             for place in data.get("results", []):
                                 loc = place["geometry"]["location"]
                                 dist = self._haversine(lat, lon, loc["lat"], loc["lng"])
-
-                                # Compute maternity relevance score
                                 name_lower = place["name"].lower()
                                 types = place.get("types", [])
+                                rating = place.get("rating")
+                                reviews = place.get("user_ratings_total", 0)
+
+                                # FILTER: skip if not a real hospital
+                                # Must have "hospital" in types OR "hospital/nursing/clinic" in name
+                                is_hospital = (
+                                    "hospital" in types or
+                                    any(kw in name_lower for kw in [
+                                        "hospital", "nursing home", "clinic",
+                                        "medical", "health centre", "health center",
+                                        "phc", "chc", "dispensary", "maternity",
+                                    ])
+                                )
+                                if not is_hospital:
+                                    continue
+
+                                # FILTER: skip listings with no reviews and no rating
+                                # (likely spam/fake entries)
+                                if rating is None and reviews == 0:
+                                    continue
+
+                                # Compute maternity relevance score
                                 maternity_score = 0
                                 if any(kw in name_lower for kw in ["maternity", "obstetric", "gynae", "women", "mahila", "janani", "mother", "prasuti"]):
                                     maternity_score = 3
-                                elif any(kw in name_lower for kw in ["district hospital", "civil hospital", "government hospital"]):
+                                elif any(kw in name_lower for kw in ["district hospital", "civil hospital", "government hospital", "zonal hospital"]):
                                     maternity_score = 2
                                 elif "hospital" in types or "hospital" in name_lower:
                                     maternity_score = 1
