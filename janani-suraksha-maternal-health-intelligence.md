@@ -9,7 +9,7 @@
 
 ## Abstract
 
-JananiSuraksha is an AI-powered maternal health risk intelligence platform that predicts high-risk pregnancies, optimizes emergency obstetric referral routing, and provides continuous antenatal monitoring through ASHA worker smartphones — addressing India's maternal mortality crisis where ~22,500 women die annually from preventable obstetric complications. India's Maternal Mortality Ratio (MMR) stands at 88 per 100,000 live births (SRS 2021-23), with the poorest states bearing catastrophic burden: Assam (195), Uttar Pradesh (167), Madhya Pradesh (153). The fundamental failure is the "three delays" — delay in deciding to seek care, delay in reaching a facility, and delay in receiving adequate treatment — which collectively account for most maternal deaths. Yet India has 1.18 million ASHA workers who visit every pregnant woman monthly, but they lack any AI tool to predict which pregnancies will turn dangerous. JananiSuraksha introduces three novel technical contributions: (1) **O(1) Maternal Risk Scoring via Precomputed Multiplicative Relative Risk Tables** that map 50,000+ combinations of maternal risk factors (age, parity, hemoglobin, blood pressure, gestational week, BMI, complication history) to literature-calibrated risk scores retrievable via single hash-indexed table lookup, enabling ASHA workers to instantly classify pregnancies as low/medium/high/critical risk from a 10-field voice questionnaire; (2) **O(1) Emergency Referral Routing via Precomputed Facility-Capability Shortest-Path Trees** that model India's health facility network (Sub-centres → PHCs → CHCs → District Hospitals → Medical Colleges) as a directed weighted graph with real-time capability attributes (specialist availability, blood bank status, functional OT, ambulance availability), with precomputed spatial nearest-neighbor lookup tables enabling instant optimal facility recommendation given a mother's location and required care level; and (3) **O(1) Anemia Progression Prediction via Precomputed Hemoglobin Trajectory Lookup Tables** that tracks hemoglobin levels across antenatal visits and uses a learned index structure to map (initial_Hb, gestational_week, iron_supplementation_compliance, dietary_pattern) to predicted Hb trajectory and intervention urgency in constant time. Built on GCP with Gemini APIs, with planned integration for Sarvam AI voice interface and Gemma 3n E2B offline inference. Deployed at jananisuraksha.dmj.one.
+JananiSuraksha is an AI-powered maternal health risk intelligence platform that predicts high-risk pregnancies, optimizes emergency obstetric referral routing, and provides continuous antenatal monitoring through ASHA worker smartphones — addressing India's maternal mortality crisis where ~22,500 women die annually from preventable obstetric complications. India's Maternal Mortality Ratio (MMR) stands at 88 per 100,000 live births (SRS 2021-23), with the poorest states bearing catastrophic burden: Assam (195), Uttar Pradesh (167), Madhya Pradesh (153). The fundamental failure is the "three delays" — delay in deciding to seek care, delay in reaching a facility, and delay in receiving adequate treatment — which collectively account for most maternal deaths. Yet India has 1.18 million ASHA workers who visit every pregnant woman monthly, but they lack any AI tool to predict which pregnancies will turn dangerous. JananiSuraksha introduces three novel technical contributions: (1) **Constant-Time Maternal Risk Scoring via Precomputed Multiplicative Relative Risk Tables** that map 50,000+ combinations of maternal risk factors (age, parity, hemoglobin, blood pressure, gestational week, BMI, complication history) to literature-calibrated risk scores retrievable via single hash-indexed table lookup, enabling ASHA workers to instantly classify pregnancies as low/medium/high/critical risk from a 10-field voice questionnaire; (2) **Constant-Time Emergency Referral Routing via Precomputed Facility-Capability Shortest-Path Trees** that model India's health facility network (Sub-centres → PHCs → CHCs → District Hospitals → Medical Colleges) as a directed weighted graph with real-time capability attributes (specialist availability, blood bank status, functional OT, ambulance availability), with precomputed spatial nearest-neighbor lookup tables enabling instant optimal facility recommendation given a mother's location and required care level; and (3) **Constant-Time Anemia Progression Prediction via Precomputed Hemoglobin Trajectory Lookup Tables** that tracks hemoglobin levels across antenatal visits and uses a learned index structure to map (initial_Hb, gestational_week, iron_supplementation_compliance, dietary_pattern) to predicted Hb trajectory and intervention urgency in constant time. Built on GCP with Gemini APIs, with planned integration for Sarvam AI voice interface and Gemma 3n E2B offline inference. Deployed at jananisuraksha.dmj.one.
 
 ## Background
 
@@ -75,7 +75,7 @@ India's mothers are dying — from complications that the world solved decades a
 
 JananiSuraksha converts India's ASHA network from a passive registration system into an active predictive intelligence network. Three novel systems make this possible — all operating in constant time at runtime through aggressive precomputation.
 
-**Innovation 1 — O(1) Maternal Risk Scoring via Precomputed Multiplicative Relative Risk Tables**
+**Innovation 1 — Constant-Time Maternal Risk Scoring via Precomputed Multiplicative Relative Risk Tables**
 
 The core insight: maternal mortality risk is a function of a finite set of well-understood risk factors. Medical literature and India's SRS/NFHS data provide sufficient historical evidence to compute prior probabilities for each risk factor combination. Rather than running a complex ML model at inference time (requiring GPU, connectivity, latency), JananiSuraksha precomputes multiplicative relative risk scores for all practically-occurring factor combinations and stores them in a hash-indexed lookup table.
 
@@ -89,17 +89,17 @@ The risk factors (7 dimensions, each discretized):
 - **Complication history**: None, Previous C-section, Previous PPH, Previous eclampsia, Multiple (5 levels)
 
 Total combinations: 5 × 4 × 5 × 5 × 7 × 4 × 5 = **70,000** entries. Each entry stores:
-- Base rate: 0.005 derived from India SRS 2019-21 MMR + WHO severe morbidity 5:1 ratio
+- Base rate: 0.005 derived from India SRS 2021-23 MMR + WHO severe morbidity 5:1 ratio
 - Combined risk: base_rate × RR_age × RR_parity × RR_hb × RR_bp × RR_gest × RR_bmi × RR_comp (multiplicative relative risk model, medical standard)
 - Risk score: Combined risk score capped at 0.95, with interaction terms for synergistic risk factor combinations
 - Risk classification: Low (<0.01), Medium (0.01-0.05), High (0.05-0.15), Critical (>0.15)
 - Top 3 recommended interventions for that risk profile
 
-At runtime, the ASHA worker answers 10 voice questions in her language. The interface captures the 7 factor values via form input or voice (Sarvam AI STT integration planned). A single hash computation maps to the table entry — **O(1)**. The ASHA immediately sees: "This mother is HIGH RISK — hemoglobin is critically low and she has history of PPH. Refer to District Hospital within 48 hours. Ensure iron supplementation compliance."
+At runtime, the ASHA worker answers 10 voice questions in her language. The interface captures the 7 factor values via form input or voice (Sarvam AI STT integration planned). A single hash computation maps to the table entry — **constant time**. The ASHA immediately sees: "This mother is HIGH RISK — hemoglobin is critically low and she has history of PPH. Refer to District Hospital within 48 hours. Ensure iron supplementation compliance."
 
 The risk weights are calibrated from published epidemiological research (NFHS-5, WHO, Cochrane, Lancet, ACOG). Future versions will enable continuous updates as birth outcome data accumulates, with regional calibration (Assam's risk profile differs from Kerala's).
 
-**Innovation 2 — O(1) Emergency Referral Routing via Precomputed Facility-Capability Spatial Index**
+**Innovation 2 — Constant-Time Emergency Referral Routing via Precomputed Facility-Capability Spatial Index**
 
 When a high-risk or emergency case is identified, the critical question is: "Which facility can actually handle this case RIGHT NOW?" A CHC without a gynecologist, blood bank, or functional OT is useless for an eclampsia case — sending a patient there wastes the golden hour.
 
@@ -111,11 +111,11 @@ JananiSuraksha indexes India's health facility network via precomputed spatial n
 
 For each capability level (Basic EmOC, Comprehensive EmOC, Blood Transfusion, C-section, Neonatal ICU), the system precomputes the nearest facility for every grid cell using haversine distance computation.
 
-At runtime, given a mother's coordinates and required care level (determined by the risk score), the nearest facility with matching capability is retrieved via grid-key lookup — **O(1)**. The system returns: facility name, distance, estimated travel time, specialist availability, blood bank status, and contact information.
+At runtime, given a mother's coordinates and required care level (determined by the risk score), the nearest facility with matching capability is retrieved via grid-key lookup — **constant time**. The system returns: facility name, distance, estimated travel time, specialist availability, blood bank status, and contact information.
 
 Future versions will incorporate road-network-based routing (using actual travel times rather than straight-line distance) and real-time facility status updates via integration with India's HMIS.
 
-**Innovation 3 — O(1) Anemia Progression Prediction via Learned Index on Hemoglobin Trajectories**
+**Innovation 3 — Constant-Time Anemia Progression Prediction via Learned Index on Hemoglobin Trajectories**
 
 Anemia is the silent multiplier of maternal mortality — anemic mothers hemorrhage more, recover slower, and have higher infection rates. Yet anemia progresses gradually across pregnancy, and early detection of declining hemoglobin trajectories can trigger iron supplementation interventions weeks before crisis.
 
@@ -131,8 +131,8 @@ The trajectory database contains 7,480 profiles sorted by predicted delivery Hb,
 - Previous anemia recurrence risk (Badfar et al, J Matern Fetal Neonatal Med 2017)
 
 The learned index is a 2-layer MLP (5→64→32→1, 2,497 parameters, ~68 KB) trained on the 7,480 trajectory profiles to approximate the CDF of the sorted array. At runtime:
-1. The MLP takes raw continuous features (no discretization needed) and predicts the approximate position in the sorted trajectory array — **O(1)** (pure-Python forward pass, no GPU required)
-2. Local binary search over ±20 positions refines to the best match — **O(1) bounded**
+1. The MLP takes raw continuous features (no discretization needed) and predicts the approximate position in the sorted trajectory array — **constant time** (pure-Python forward pass, no GPU required)
+2. Local binary search over ±20 positions refines to the best match — **constant time, bounded**
 3. Retrieve predicted Hb at each future gestational week, risk level, and compliance impact scenarios
 4. Fallback chain: hash-based discretized index → analytical physiological model computation
 
@@ -179,8 +179,8 @@ When predicted Hb drops below 7 g/dL (severe anemia threshold) at any future ges
 │ Posterior      │ │ Capability   │ │ on Hb             │
 │ Tables         │ │ Graph +      │ │ Trajectories      │
 │ 70K entries    │ │ Shortest-    │ │ 7,480 profiles    │
-│ O(1) lookup    │ │ Path Trees   │ │ O(1) prediction   │
-│                │ │ O(1) routing │ │                   │
+│ const lookup   │ │ Path Trees   │ │ const prediction  │
+│                │ │ const routing│ │                   │
 └──────┬─────────┘ └──────┬───────┘ └────────┬──────────┘
        │                  │                   │
        ▼                  ▼                   ▼
@@ -218,7 +218,7 @@ For each risk factor combination $\mathbf{x} = (x_1, x_2, ..., x_7)$, the risk s
 
 $$\hat{R}(\mathbf{x}) = R_0 \times \prod_{i=1}^{7} RR_i(x_i) \times \prod_{j} IF_j(\mathbf{x})$$
 
-where $R_0 = 0.005$ is the baseline adverse outcome rate (India SRS 2019-21 MMR + WHO severe morbidity 5:1 ratio), $RR_i(x_i)$ is the relative risk for factor $i$ at level $x_i$ (from published epidemiological literature), and $IF_j$ are interaction factors for synergistic risk combinations (e.g., severe anemia + PPH history).
+where $R_0 = 0.005$ is the baseline adverse outcome rate (India SRS 2021-23 MMR + WHO severe morbidity 5:1 ratio), $RR_i(x_i)$ is the relative risk for factor $i$ at level $x_i$ (from published epidemiological literature), and $IF_j$ are interaction factors for synergistic risk combinations (e.g., severe anemia + PPH history).
 
 Risk classification thresholds:
 $$\text{Class}(\mathbf{x}) = \begin{cases} \text{Low} & \hat{R} < 0.01 \\ \text{Medium} & 0.01 \leq \hat{R} < 0.05 \\ \text{High} & 0.05 \leq \hat{R} < 0.15 \\ \text{Critical} & \hat{R} \geq 0.15 \end{cases}$$
@@ -241,7 +241,7 @@ $$f_\theta(\mathbf{x}) \approx \text{CDF}(\mathbf{x}) \cdot N$$
 
 where $\mathbf{x} = (\text{Hb}, \text{gest\_week}, \text{IFA}, \text{diet}, \text{prev\_anemia})$ are raw continuous features.
 
-At query time: $\hat{p} = f_\theta(\mathbf{x})$, then local search over $[\hat{p} - \epsilon, \hat{p} + \epsilon]$ where $\epsilon = 20$ — O(1) bounded. Mean position error: 18.7 positions (Hb error ~0.04 g/dL, clinically negligible). Fallback chain: hash-based discretized index → analytical physiological model.
+At query time: $\hat{p} = f_\theta(\mathbf{x})$, then local search over $[\hat{p} - \epsilon, \hat{p} + \epsilon]$ where $\epsilon = 20$ — constant time, bounded. Mean position error: 18.7 positions (Hb error ~0.04 g/dL, clinically negligible). Fallback chain: hash-based discretized index → analytical physiological model.
 
 Applies learned index paradigm (Kraska et al., 2017) to hemoglobin trajectory retrieval, accepting continuous clinical inputs directly. Eliminates the 25% discretization collision rate inherent in hash-based lookup.
 
@@ -344,7 +344,7 @@ Output: Risk classification, recommended actions, referral destination
 
 ### Technical Advantages
 
-1. **O(1) Runtime**: All three engines operate in constant time — no internet-dependent API calls for risk scoring, no complex model inference, no database queries during critical moments.
+1. **Constant-Time Runtime**: All three engines operate in constant time — no internet-dependent API calls for risk scoring, no complex model inference, no database queries during critical moments.
 2. **Offline Capability**: Gemma 3n E2B on ASHA phone provides offline risk screening. Risk tables cached locally. Referral routing works with last-synced facility data.
 3. **Bayesian Continuous Learning**: Risk tables improve with every recorded birth outcome. Regional priors adapt to local conditions. No expensive model retraining needed.
 4. **Low Infrastructure**: Runs on single GCP VM + Redis. No GPU needed at runtime. Edge inference on ASHA smartphone. Works on 2G connectivity via SMS fallback.
@@ -401,21 +401,21 @@ Deployment of JananiSuraksha in a target district will reduce the "first delay" 
 
 ### Independent Claims
 
-1. **Claim 1 (Method)**: A computer-implemented method for real-time maternal mortality risk assessment comprising: (a) receiving voice input from a community health worker describing a pregnant woman's health parameters; (b) extracting structured risk factors from the voice input using natural language understanding; (c) discretizing the risk factors into predetermined bucket indices across seven clinical dimensions; (d) computing a hash key from the discretized indices; (e) retrieving a precomputed maternal risk score from a hash-indexed table of multiplicative relative risk model entries, wherein the table entries are precomputed from literature-calibrated risk scores derived from published epidemiological research; and (f) generating a risk classification and intervention recommendations in the health worker's language — all in O(1) computational time.
+1. **Claim 1 (Method)**: A computer-implemented method for real-time maternal mortality risk assessment comprising: (a) receiving voice input from a community health worker describing a pregnant woman's health parameters; (b) extracting structured risk factors from the voice input using natural language understanding; (c) discretizing the risk factors into predetermined bucket indices across seven clinical dimensions; (d) computing a hash key from the discretized indices; (e) retrieving a precomputed maternal risk score from a hash-indexed table of multiplicative relative risk model entries, wherein the table entries are precomputed from literature-calibrated risk scores derived from published epidemiological research; and (f) generating a risk classification and intervention recommendations in the health worker's language — all in constant computational time.
 
-2. **Claim 2 (System)**: A system for emergency obstetric referral routing comprising: (a) a health facility database storing real-time facility attributes including specialist availability, blood bank inventory, operation theatre functionality, and geographic location; (b) precomputed spatial nearest-neighbor lookup tables from grid cells to facilities, computed per required capability level using spatial nearest-neighbor computation with haversine distance; (c) a query interface that, given a pregnant woman's geographic location and required care level determined by the risk assessment engine, retrieves the optimal referral destination via single spatial nearest-neighbor lookup tables in O(1) time; and (d) an automated dispatch system that simultaneously alerts the receiving facility, requests ambulance dispatch, and notifies registered family members.
+2. **Claim 2 (System)**: A system for emergency obstetric referral routing comprising: (a) a health facility database storing real-time facility attributes including specialist availability, blood bank inventory, operation theatre functionality, and geographic location; (b) precomputed spatial nearest-neighbor lookup tables from grid cells to facilities, computed per required capability level using spatial nearest-neighbor computation with haversine distance; (c) a query interface that, given a pregnant woman's geographic location and required care level determined by the risk assessment engine, retrieves the optimal referral destination via single spatial nearest-neighbor lookup tables in constant time; and (d) an automated dispatch system that simultaneously alerts the receiving facility, requests ambulance dispatch, and notifies registered family members.
 
 ### Dependent Claims
 
 1. **Claim 3** (dependent on Claim 1): The method of Claim 1, wherein the Bayesian posterior risk scores are maintained separately for each administrative region, enabling regional calibration of risk thresholds based on local maternal mortality patterns.
 
-2. **Claim 4** (dependent on Claim 1): The method of Claim 1, further comprising predicting hemoglobin trajectory using a **learned index structure** (Kraska et al., 2017) — a 2-layer neural network (5→64→32→1, 2,497 parameters) trained to approximate the cumulative distribution function of a sorted array of 7,480 hemoglobin trajectory profiles, enabling O(1) anemia progression prediction from raw continuous features without discretization. The learned index accepts continuous inputs (initial Hb, gestational week, IFA compliance, dietary score, previous anemia) and predicts the approximate position in the sorted trajectory array, with bounded local search (±20 positions) refining to exact match. Applies the learned index paradigm to maternal health hemoglobin trajectory prediction.
+2. **Claim 4** (dependent on Claim 1): The method of Claim 1, further comprising predicting hemoglobin trajectory using a **learned index structure** (Kraska et al., 2017) — a 2-layer neural network (5→64→32→1, 2,497 parameters) trained to approximate the cumulative distribution function of a sorted array of 7,480 hemoglobin trajectory profiles, enabling constant-time anemia progression prediction from raw continuous features without discretization. The learned index accepts continuous inputs (initial Hb, gestational week, IFA compliance, dietary score, previous anemia) and predicts the approximate position in the sorted trajectory array, with bounded local search (±20 positions) refining to exact match. Applies the learned index paradigm to maternal health hemoglobin trajectory prediction.
 
 3. **Claim 5** (dependent on Claim 2): The system of Claim 2, wherein the spatial nearest-neighbor lookup tables are incrementally updated upon receiving emergency facility status changes via a publish-subscribe messaging system, without requiring full recomputation. (Planned — not yet implemented in current version)
 
 4. **Claim 6** (dependent on Claim 1): The method of Claim 1, further comprising an offline inference mode using a knowledge-distilled small language model (Gemma 3n E2B) deployed on the health worker's mobile device, enabling risk assessment in areas without network connectivity. (Planned integration — Gemma 3n E2B is a real Google model released June 2025, integration pending)
 
-5. **Claim 7** (dependent on Claim 2): The system of Claim 2, wherein facility blood bank inventory levels are estimated using Count-Min Sketch probabilistic data structures federated across facilities, enabling O(1) blood availability estimation without centralized real-time database synchronization. (Planned — proof-of-concept not yet implemented)
+5. **Claim 7** (dependent on Claim 2): The system of Claim 2, wherein facility blood bank inventory levels are estimated using Count-Min Sketch probabilistic data structures federated across facilities, enabling constant-time blood availability estimation without centralized real-time database synchronization. (Planned — proof-of-concept not yet implemented)
 
 ## Complete Citizen Experience Design
 
@@ -437,7 +437,7 @@ ASHA worker Radha, 29, serves 1,000 families in Sitapur district, Uttar Pradesh.
 9. "Khana — roti, dal, sabzi, doodh kabhi kabhi" → Dietary pattern: moderate iron intake
 10. "Koi problem?" → "Haan, thoda chakkar aata hai" (dizziness — noted for clinical follow-up)
 
-**Step 3 (120-125 seconds): Risk score in <1 second.** The 7-factor vector is discretized, hashed, and looked up in the precomputed risk table — O(1). Result:
+**Step 3 (120-125 seconds): Risk score in <1 second.** The 7-factor vector is discretized, hashed, and looked up in the precomputed risk table — constant time. Result:
 
 > **RISK: MEDIUM-HIGH**
 > Hemoglobin 8.5 g/dL (moderate anemia) + Elevated BP + second trimester.
@@ -635,7 +635,7 @@ JananiSuraksha follows the same approach:
 
 ### Technical Resources
 
-1. SRS Special Bulletin on Maternal Mortality in India 2019-21. Office of the Registrar General, India. URL: https://censusindia.gov.in/
+1. SRS Special Bulletin on Maternal Mortality in India 2021-23. Office of the Registrar General, India. URL: https://censusindia.gov.in/
 2. NFHS-5 India Report (2019-21). International Institute for Population Sciences. URL: https://rchiips.org/nfhs/
 3. Rural Health Statistics 2021-22. Ministry of Health and Family Welfare. URL: https://hmis.mohfw.gov.in/
 
