@@ -6,11 +6,18 @@ import urllib.parse
 import urllib.request
 from pathlib import Path
 
-DATA_GOV_API_KEY = os.environ.get("DATA_GOV_API_KEY")
+DATA_GOV_API_KEY = os.environ.get("DATA_GOV_API_KEY", "")
+_OUTPUT_DIR = Path(__file__).resolve().parent.parent.parent / "data"
+
 if not DATA_GOV_API_KEY:
+    # Graceful fallback: if pre-fetched data exists, skip the API call
+    _existing = _OUTPUT_DIR / "real_facilities.json"
+    if _existing.exists():
+        print(f"DATA_GOV_API_KEY not set — using existing {_existing} ({_existing.stat().st_size / 1024:.0f} KB)")
+        raise SystemExit(0)
     raise RuntimeError(
-        "DATA_GOV_API_KEY environment variable is required but not set. "
-        "Get an API key from https://data.gov.in and set it before running this script."
+        "DATA_GOV_API_KEY environment variable is required but not set and no existing "
+        "data/real_facilities.json found. Get an API key from https://data.gov.in."
     )
 RESOURCES = [
     "7d208ae4-5d65-47ec-8cb8-2a7a7ac89f8c",

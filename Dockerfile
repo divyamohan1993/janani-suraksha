@@ -5,6 +5,11 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY app/ app/
+COPY data/real_facilities*.json data/
+
+# Build arg for data.gov.in API key (used only during precompute, not baked into runtime image)
+ARG DATA_GOV_API_KEY=""
+ENV DATA_GOV_API_KEY=${DATA_GOV_API_KEY}
 
 # Precompute O(1) tables and fetch real facility data (baked into image)
 RUN mkdir -p data && \
