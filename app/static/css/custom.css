@@ -166,74 +166,105 @@ table tbody tr {
    ======================================== */
 
 @media print {
-    /* Hide navigation, footer, and interactive elements */
-    header nav,
+    /* HIDE: all interactive elements, nav, footer, form, voice, buttons */
+    header,
     footer,
+    nav,
     #toast-container,
-    button[type="button"],
-    button[type="submit"],
-    .no-print {
+    button,
+    form,
+    fieldset,
+    .no-print,
+    [x-show*="showGuide"],
+    details,
+    input,
+    select,
+    label,
+    [role="alert"] {
         display: none !important;
     }
 
-    /* Reset background colors for printing */
+    /* SHOW: only the results panel */
     body {
         background: #fff !important;
         color: #000 !important;
-        font-size: 11pt;
+        font-size: 10pt;
+        line-height: 1.4;
     }
 
-    /* Ensure content is visible */
     main {
         max-width: 100% !important;
         padding: 0 !important;
         margin: 0 !important;
     }
 
-    /* Keep risk colors visible in print */
-    .risk-critical {
-        animation: none !important;
-        border: 2px solid #DC2626 !important;
+    /* Print report header */
+    main::before {
+        content: "JananiSuraksha (जननी सुरक्षा) — Maternal Health Risk Assessment Report";
+        display: block;
+        font-size: 16pt;
+        font-weight: bold;
+        text-align: center;
+        border-bottom: 3px solid #FF9933;
+        padding-bottom: 8pt;
+        margin-bottom: 12pt;
+        color: #000080;
     }
 
-    /* Print header */
-    header {
-        background: #fff !important;
-        color: #000 !important;
-        border-bottom: 2px solid #FF9933;
+    main::after {
+        content: "Clinical Decision Support Tool — All assessments require human clinical review per India's Telemedicine Practice Guidelines 2020. Risk scores calibrated from NFHS-5, WHO, Cochrane, Lancet, ACOG.";
+        display: block;
+        font-size: 7pt;
+        color: #666;
+        border-top: 1px solid #ccc;
+        padding-top: 8pt;
+        margin-top: 16pt;
+        text-align: center;
+    }
+
+    /* Risk level card — keep colors */
+    .risk-critical { animation: none !important; }
+
+    /* Cards: clean borders for print */
+    [class*="rounded"] {
+        border: 1px solid #ddd !important;
         box-shadow: none !important;
+        border-radius: 4px !important;
     }
 
-    header h1 {
-        color: #000 !important;
-    }
-
-    header p {
-        color: #333 !important;
-    }
-
-    /* Cards should have borders in print */
-    .bg-white {
-        border: 1px solid #ccc !important;
-        box-shadow: none !important;
-    }
-
-    /* Ensure form sections don't break across pages */
-    fieldset {
+    /* Don't break cards across pages */
+    [class*="rounded"] {
         page-break-inside: avoid;
     }
 
-    /* Page margins */
-    @page {
-        margin: 1.5cm;
+    /* Show the Print Report button text but hide the button itself */
+    button:has(> span:contains("Print")) {
+        display: none !important;
     }
 
-    /* Show link URLs in print */
-    a[href^="http"]::after {
-        content: " (" attr(href) ")";
-        font-size: 9pt;
-        color: #666;
+    /* Keep colored text readable */
+    .text-green-600, .text-green-700 { color: #166534 !important; }
+    .text-red-600, .text-red-700 { color: #991b1b !important; }
+    .text-yellow-600 { color: #854d0e !important; }
+    .text-orange-600 { color: #9a3412 !important; }
+
+    /* Background colors for risk badges */
+    .bg-red-50 { background: #fef2f2 !important; }
+    .bg-green-50 { background: #f0fdf4 !important; }
+    .bg-yellow-50 { background: #fefce8 !important; }
+    .bg-blue-50 { background: #eff6ff !important; }
+
+    @page {
+        margin: 1.5cm;
+        @bottom-center {
+            content: "JananiSuraksha — jananisuraksha.dmj.one";
+            font-size: 8pt;
+            color: #999;
+        }
     }
+
+    /* Hide link URLs in print (too noisy) */
+    a::after { content: none !important; }
 }
 
 /* ========================================

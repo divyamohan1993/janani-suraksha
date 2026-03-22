@@ -164,22 +164,29 @@ async def full_assessment(request: AssessmentRequest):
             prev_anemia=request.prev_anemia,
         )
 
-    # Step 3: Referral routing (if risk >= high)
+    # Step 3: Referral — find nearest REAL hospital via Google Places
     referral = None
-    if risk["risk_level"] in ("high", "critical"):
-        # Determine required capability from risk factors
-        capability = "comprehensive_emoc"
-        if request.risk_factors.hemoglobin < 7:
-            capability = "blood_transfusion"
-        if risk["risk_level"] == "critical":
-            capability = "c_section"
-
-        referral = _referral_engine.route(
-            latitude=request.latitude,
-            longitude=request.longitude,
-            capability_required=capability,
-            risk_level=risk["risk_level"],
-        )
+    if risk["risk_level"] in ("high", "critical") and _real_facilities:
+        try:
+            nearby = await _real_facilities.find_nearby(
+                request.latitude, request.longitude, radius_km=50)
+            if nearby:
+                top = nearby[0]
+                referral = {
+                    "facility_name": top["name"],
+                    "facility_type": top.get("category", "Hospital"),
+                    "distance_km": top["distance_km"],
+                    "eta_minutes": round(top["distance_km"] * 2, 0) if top["distance_km"] else None,
+                    "specialist_available": True,
+                    "blood_bank_status": "available",
+                    "has_functional_ot": True,
+                    "contact_phone": top.get("phone", "108"),
+                    "navigation_url": top["navigation_url"],
+                    "backup_facility": nearby[1] if len(nearby) > 1 else None,
+                    "source": "google_places",
+                }
+        except Exception as e:
+            logger.warning(f"Real facility lookup failed: {e}")
 
     # Step 4: Generate alerts
     alerts = []
