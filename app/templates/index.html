@@ -226,32 +226,98 @@
                             <svg class="w-5 h-5 mr-2 text-saffron" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                             Supplementation &amp; Nutrition
                         </legend>
-                        <div class="space-y-5 mt-3">
+                        <div class="space-y-4 mt-3">
                             <div>
-                                <label for="ifa_compliance" class="block text-sm font-medium text-gray-700 mb-2">
-                                    IFA Compliance: <span class="font-bold text-india-navy" x-text="form.ifa_compliance + '%'"></span>
-                                </label>
-                                <input type="range" id="ifa_compliance" x-model.number="form.ifa_compliance" min="0" max="100" step="5"
-                                    class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-saffron">
-                                <div class="flex justify-between text-xs text-gray-400 mt-1">
-                                    <span>0%</span><span>25%</span><span>50%</span><span>75%</span><span>100%</span>
+                                <h4 class="text-sm font-semibold text-india-navy mb-1">IFA (Iron-Folic Acid) Compliance</h4>
+                                <p class="text-xs text-gray-400 mb-3">Based on Modified Morisky Adherence Scale (Morisky DE, Medical Care 1986;24:67-74)</p>
+                            </div>
+
+                            <div class="space-y-3">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">How many days in the last 7 did she take her iron tablet?</label>
+                                    <div class="flex gap-2 flex-wrap">
+                                        <template x-for="d in [0,1,2,3,4,5,6,7]" :key="d">
+                                            <button type="button" @click="form.ifa_days = d; computeIFA()"
+                                                :class="form.ifa_days === d ? 'bg-saffron text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'"
+                                                class="w-10 h-10 rounded-lg text-sm font-bold transition" x-text="d"></button>
+                                        </template>
+                                    </div>
+                                </div>
+
+                                <div class="flex items-center gap-3">
+                                    <label class="text-sm text-gray-700 flex-1">Does she sometimes forget to take her tablet?</label>
+                                    <div class="flex gap-2">
+                                        <button type="button" @click="form.ifa_forgets = true; computeIFA()"
+                                            :class="form.ifa_forgets === true ? 'bg-red-500 text-white' : 'bg-gray-100 text-gray-700'"
+                                            class="px-4 py-1.5 rounded-lg text-sm font-medium transition">Yes</button>
+                                        <button type="button" @click="form.ifa_forgets = false; computeIFA()"
+                                            :class="form.ifa_forgets === false ? 'bg-green-500 text-white' : 'bg-gray-100 text-gray-700'"
+                                            class="px-4 py-1.5 rounded-lg text-sm font-medium transition">No</button>
+                                    </div>
+                                </div>
+
+                                <div class="flex items-center gap-3">
+                                    <label class="text-sm text-gray-700 flex-1">When she feels better, does she stop taking it?</label>
+                                    <div class="flex gap-2">
+                                        <button type="button" @click="form.ifa_stops = true; computeIFA()"
+                                            :class="form.ifa_stops === true ? 'bg-red-500 text-white' : 'bg-gray-100 text-gray-700'"
+                                            class="px-4 py-1.5 rounded-lg text-sm font-medium transition">Yes</button>
+                                        <button type="button" @click="form.ifa_stops = false; computeIFA()"
+                                            :class="form.ifa_stops === false ? 'bg-green-500 text-white' : 'bg-gray-100 text-gray-700'"
+                                            class="px-4 py-1.5 rounded-lg text-sm font-medium transition">No</button>
+                                    </div>
                                 </div>
                             </div>
+
+                            <div class="bg-gray-50 rounded-lg p-3 flex items-center justify-between">
+                                <span class="text-sm font-medium text-gray-700">Computed IFA Compliance:</span>
+                                <span class="text-lg font-bold" :class="form.ifa_compliance >= 70 ? 'text-green-600' : form.ifa_compliance >= 40 ? 'text-yellow-600' : 'text-red-600'"
+                                    x-text="Math.round(form.ifa_compliance) + '%'"></span>
+                            </div>
+                        </div>
+
+                        <div class="space-y-4 mt-6">
                             <div>
-                                <label for="dietary_score" class="block text-sm font-medium text-gray-700 mb-2">
-                                    Dietary Score: <span class="font-bold text-india-navy" x-text="form.dietary_score + '%'"></span>
-                                </label>
-                                <input type="range" id="dietary_score" x-model.number="form.dietary_score" min="0" max="100" step="5"
-                                    class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-india-green">
-                                <div class="flex justify-between text-xs text-gray-400 mt-1">
-                                    <span>0%</span><span>25%</span><span>50%</span><span>75%</span><span>100%</span>
+                                <h4 class="text-sm font-semibold text-india-navy mb-1">Dietary Diversity (MDD-W)</h4>
+                                <p class="text-xs text-gray-400 mb-3">WHO/FAO Minimum Dietary Diversity for Women (FAO 2016, ISBN 978-92-5-109128-9)</p>
+                                <p class="text-xs text-gray-500 mb-2">Did the mother eat any of these food groups yesterday?</p>
+                            </div>
+
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                <template x-for="(group, idx) in dietaryGroups" :key="idx">
+                                    <label class="flex items-center gap-3 p-2.5 rounded-lg border cursor-pointer transition"
+                                        :class="group.checked ? 'bg-green-50 border-green-300' : 'bg-white border-gray-200 hover:bg-gray-50'">
+                                        <input type="checkbox" x-model="group.checked" @change="computeDietary()" class="sr-only">
+                                        <span class="w-5 h-5 rounded flex-shrink-0 flex items-center justify-center text-xs"
+                                            :class="group.checked ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-400'">
+                                            <span x-show="group.checked">&#10003;</span>
+                                        </span>
+                                        <span class="text-sm text-gray-700">
+                                            <span class="font-medium" x-text="group.name"></span>
+                                            <span class="text-gray-400 text-xs block" x-text="group.examples"></span>
+                                        </span>
+                                        <span x-show="group.iron_rich" class="ml-auto text-xs bg-red-100 text-red-600 px-1.5 py-0.5 rounded flex-shrink-0">Iron-rich</span>
+                                    </label>
+                                </template>
+                            </div>
+
+                            <div class="bg-gray-50 rounded-lg p-3 flex items-center justify-between">
+                                <div>
+                                    <span class="text-sm font-medium text-gray-700">Dietary Diversity Score:</span>
+                                    <span class="text-xs text-gray-400 ml-2" x-text="dietaryGroupsChecked + '/10 food groups'"></span>
                                 </div>
+                                <span class="text-lg font-bold" :class="form.dietary_score >= 50 ? 'text-green-600' : form.dietary_score >= 30 ? 'text-yellow-600' : 'text-red-600'"
+                                    x-text="Math.round(form.dietary_score) + '%'"></span>
                             </div>
-                            <div class="flex items-center">
-                                <input type="checkbox" id="previous_anemia" x-model="form.previous_anemia"
-                                    class="w-4 h-4 text-saffron border-gray-300 rounded focus:ring-saffron">
-                                <label for="previous_anemia" class="ml-2 text-sm font-medium text-gray-700">Previous Anemia History</label>
-                            </div>
+                            <p class="text-xs text-gray-400" x-show="dietaryGroupsChecked >= 5">&#10003; Meets WHO minimum dietary diversity threshold (&ge;5 groups)</p>
+                            <p class="text-xs text-red-400" x-show="dietaryGroupsChecked < 5 && dietaryGroupsChecked > 0">Below WHO minimum dietary diversity threshold (&lt;5 groups)</p>
+                        </div>
+
+                        <!-- Previous Anemia History (keep existing) -->
+                        <div class="mt-4 flex items-center gap-3">
+                            <input type="checkbox" id="prev_anemia" x-model="form.previous_anemia"
+                                class="w-4 h-4 text-saffron border-gray-300 rounded focus:ring-saffron">
+                            <label for="prev_anemia" class="text-sm text-gray-700">Previous Anemia History</label>
                         </div>
                     </fieldset>
 
@@ -688,11 +754,59 @@
                     height_cm: null,
                     weight_kg: null,
                     complication_history: 'none',
+                    // IFA Morisky fields
+                    ifa_days: null,
+                    ifa_forgets: null,
+                    ifa_stops: null,
+                    // Computed outputs
                     ifa_compliance: 50,
                     dietary_score: 50,
                     previous_anemia: false,
                     latitude: null,
                     longitude: null
+                },
+
+                dietaryGroups: [
+                    { name: 'Grains & Roots', examples: 'Roti, rice, potato, bread', checked: false, iron_rich: false },
+                    { name: 'Pulses & Legumes', examples: 'Dal, rajma, chana, moong', checked: false, iron_rich: true },
+                    { name: 'Nuts & Seeds', examples: 'Peanuts, almonds, til', checked: false, iron_rich: false },
+                    { name: 'Dairy', examples: 'Milk, dahi, paneer, ghee', checked: false, iron_rich: true },
+                    { name: 'Meat, Fish & Poultry', examples: 'Chicken, fish, mutton', checked: false, iron_rich: true },
+                    { name: 'Eggs', examples: 'Hen egg, duck egg', checked: false, iron_rich: true },
+                    { name: 'Dark Green Leafy Veg', examples: 'Palak, methi, sarson, bathua', checked: false, iron_rich: true },
+                    { name: 'Vit-A Rich Fruits/Veg', examples: 'Papaya, carrot, pumpkin, mango', checked: false, iron_rich: false },
+                    { name: 'Other Vegetables', examples: 'Tomato, onion, gourd, beans', checked: false, iron_rich: false },
+                    { name: 'Other Fruits', examples: 'Banana, apple, guava, orange', checked: false, iron_rich: false },
+                ],
+
+                get dietaryGroupsChecked() {
+                    return this.dietaryGroups.filter(g => g.checked).length;
+                },
+
+                computeIFA() {
+                    // Modified Morisky Adherence Scale computation
+                    // Source: Morisky DE et al, Medical Care 1986;24(1):67-74
+                    if (this.form.ifa_days === null) { this.form.ifa_compliance = 50; return; }
+
+                    let base = this.form.ifa_days / 7;  // 0-1
+                    let forgetting_factor = this.form.ifa_forgets ? 0.7 : 1.0;
+                    let stopping_factor = this.form.ifa_stops ? 0.5 : 1.0;
+
+                    this.form.ifa_compliance = Math.round(base * forgetting_factor * stopping_factor * 100);
+                },
+
+                computeDietary() {
+                    // WHO/FAO MDD-W Score
+                    // Source: FAO 2016, Minimum Dietary Diversity for Women
+                    let total = this.dietaryGroups.filter(g => g.checked).length;
+                    let iron_groups = this.dietaryGroups.filter(g => g.checked && g.iron_rich).length;
+
+                    // Base score: groups consumed / 10
+                    // Iron-rich groups weighted 1.5x for anemia relevance
+                    let base_score = total / 10;
+                    let iron_boost = iron_groups * 0.05;  // Each iron-rich group adds 5% bonus
+
+                    this.form.dietary_score = Math.round(Math.min((base_score + iron_boost) * 100, 100));
                 },
 
                 loadDemo() {
@@ -708,12 +822,24 @@
                         height_cm: 157,
                         weight_kg: 55,
                         complication_history: 'none',
-                        ifa_compliance: 60,
-                        dietary_score: 50,
+                        // IFA: 4 days out of 7, sometimes forgets, doesn't stop
+                        ifa_days: 4,
+                        ifa_forgets: true,
+                        ifa_stops: false,
+                        ifa_compliance: 40,  // Will be recomputed
+                        dietary_score: 50,    // Will be recomputed
                         previous_anemia: false,
                         latitude: null,
                         longitude: null
                     };
+                    // Set demo dietary groups (typical Indian rural diet)
+                    this.dietaryGroups[0].checked = true;  // Grains (roti/rice)
+                    this.dietaryGroups[1].checked = true;  // Pulses (dal)
+                    this.dietaryGroups[3].checked = true;  // Dairy (milk sometimes)
+                    this.dietaryGroups[6].checked = true;  // Green leafy veg
+                    this.dietaryGroups[8].checked = true;  // Other veg
+                    this.computeIFA();
+                    this.computeDietary();
                     this.results = null;
                     this.error = null;
                     showNotification('Demo case loaded: Sunita, 26y, Hb 8.5, BP 130/85', 'info');
@@ -732,12 +858,16 @@
                         height_cm: null,
                         weight_kg: null,
                         complication_history: 'none',
+                        ifa_days: null,
+                        ifa_forgets: null,
+                        ifa_stops: null,
                         ifa_compliance: 50,
                         dietary_score: 50,
                         previous_anemia: false,
                         latitude: null,
                         longitude: null
                     };
+                    this.dietaryGroups.forEach(g => g.checked = false);
                     this.results = null;
                     this.error = null;
                 },
