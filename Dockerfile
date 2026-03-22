@@ -6,6 +6,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY app/ app/
 COPY data/real_facilities*.json data/
+COPY data/learned_index_weights.json data/
 
 # Build arg for data.gov.in API key (used only during precompute, not baked into runtime image)
 ARG DATA_GOV_API_KEY=""
