@@ -41,7 +41,7 @@
             <div class="flex flex-col sm:flex-row items-center justify-between py-4">
                 <div class="text-center sm:text-left mb-3 sm:mb-0">
                     <h1 class="text-2xl sm:text-3xl font-bold text-white tracking-tight">
-                        <span aria-hidden="true" class="mr-2">&#x1F3E5;</span>JananiSuraksha
+                        <span aria-hidden="true" class="mr-2">&#x1F3E5;</span>JananiSuraksha <span class="text-base font-normal text-white text-opacity-70">जननी सुरक्षा</span>
                     </h1>
                     <p class="text-white text-opacity-90 text-sm">AI-Powered Maternal Health Risk Intelligence</p>
                     <p class="text-white text-opacity-70 text-xs">Powered by dmj.one</p>
@@ -326,6 +326,17 @@
                             class="mt-3 text-sm bg-india-navy text-white px-4 py-2 rounded-lg hover:bg-blue-900 transition">
                             Parse &amp; Fill Form
                         </button>
+                        <!-- Voice Demo Script -->
+                        <details class="mt-3" x-show="!isListening && !voiceTranscript">
+                            <summary class="text-xs text-india-navy cursor-pointer hover:underline">Show demo script to read aloud</summary>
+                            <div class="mt-2 bg-white rounded-lg border border-gray-200 p-3 space-y-2">
+                                <p class="text-xs font-bold text-gray-700">Hindi demo script:</p>
+                                <p class="text-sm text-gray-800 bg-orange-50 rounded p-2 italic">"Naam Sunita, age 26 saal, parity 1, hemoglobin 8.5, BP 130 by 85, gestational weeks 20, height 157 cm, weight 55 kg"</p>
+                                <p class="text-xs font-bold text-gray-700 mt-2">English demo script:</p>
+                                <p class="text-sm text-gray-800 bg-blue-50 rounded p-2 italic">"Name Sunita, age 26 years, parity 1, hemoglobin 8.5, BP 130 over 85, 20 weeks pregnant, height 157 cm, weight 55 kg"</p>
+                                <p class="text-xs text-gray-400 mt-1">Tip: Speak naturally. The system recognizes keywords like "age", "hemoglobin/Hb", "BP", "weeks/hafta", "weight/wajan", "height/lambai".</p>
+                            </div>
+                        </details>
                     </div>
 
                     <!-- Submit Button -->
