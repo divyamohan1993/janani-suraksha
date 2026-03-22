@@ -44,6 +44,16 @@ resource "google_cloud_run_v2_service" "janani" {
         value = var.data_gov_api_key
       }
 
+      env {
+        name  = "JANANI_TELEGRAM_BOT_TOKEN"
+        value = var.telegram_bot_token
+      }
+
+      env {
+        name  = "JANANI_TELEGRAM_CHAT_ID"
+        value = var.telegram_chat_id
+      }
+
       startup_probe {
         http_get {
           path = "/api/v1/health"

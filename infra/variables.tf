@@ -64,3 +64,16 @@ variable "data_gov_api_key" {
   sensitive   = true
   default     = ""
 }
+
+variable "telegram_bot_token" {
+  description = "Telegram bot token for alerts"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "telegram_chat_id" {
+  description = "Telegram chat ID for alert delivery"
+  type        = string
+  default     = ""
+}

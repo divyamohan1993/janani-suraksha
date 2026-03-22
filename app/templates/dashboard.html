@@ -401,9 +401,9 @@
             return {
                 stats: {
                     totalAssessments: 0,
-                    highRisk: 23,
-                    criticalAlerts: 4,
-                    facilitiesOnline: 12
+                    highRisk: 0,
+                    criticalAlerts: 0,
+                    facilitiesOnline: 0
                 },
                 facilities: [],
                 realFacilities: [],
@@ -411,18 +411,13 @@
                 facilitiesError: null,
 
                 riskDistribution: [
-                    { level: 'Low Risk', percentage: 45, count: 387, barColor: 'bg-green-500', textColor: 'text-green-700' },
-                    { level: 'Medium Risk', percentage: 30, count: 258, barColor: 'bg-yellow-500', textColor: 'text-yellow-700' },
-                    { level: 'High Risk', percentage: 18, count: 155, barColor: 'bg-orange-500', textColor: 'text-orange-700' },
-                    { level: 'Critical', percentage: 7, count: 60, barColor: 'bg-red-600', textColor: 'text-red-700' }
+                    { level: 'Low Risk', percentage: 0, count: 0, barColor: 'bg-green-500', textColor: 'text-green-700' },
+                    { level: 'Medium Risk', percentage: 0, count: 0, barColor: 'bg-yellow-500', textColor: 'text-yellow-700' },
+                    { level: 'High Risk', percentage: 0, count: 0, barColor: 'bg-orange-500', textColor: 'text-orange-700' },
+                    { level: 'Critical', percentage: 0, count: 0, barColor: 'bg-red-600', textColor: 'text-red-700' }
                 ],
 
                 recentAssessments: [
-                    { time: '09:45 AM', mother: 'Sunita Devi', risk: 'HIGH', hb: 8.5, bp: '130/85', action: 'Referred to District Hospital' },
-                    { time: '09:22 AM', mother: 'Priya Kumari', risk: 'LOW', hb: 12.1, bp: '118/72', action: 'Routine follow-up scheduled' },
-                    { time: '08:58 AM', mother: 'Meena Yadav', risk: 'CRITICAL', hb: 6.2, bp: '155/100', action: 'Emergency referral — ambulance dispatched' },
-                    { time: '08:30 AM', mother: 'Anita Singh', risk: 'MEDIUM', hb: 9.8, bp: '125/80', action: 'IFA compliance counseling, recheck in 2 weeks' },
-                    { time: '08:05 AM', mother: 'Kavita Sharma', risk: 'LOW', hb: 11.5, bp: '110/70', action: 'Routine follow-up scheduled' }
                 ],
 
                 init() {
