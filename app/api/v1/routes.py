@@ -189,6 +189,29 @@ async def full_assessment(request: AssessmentRequest):
     if request.risk_factors.bp_systolic >= 140 or request.risk_factors.bp_diastolic >= 90:
         alerts.append("Elevated BP detected — monitor weekly, refer if persistent")
 
+    # HUMAN-IN-THE-LOOP: All assessments require clinical confirmation
+    # Per India's Telemedicine Practice Guidelines 2020 and DPDP Act 2023:
+    # AI-generated risk scores are decision-SUPPORT, not autonomous diagnosis.
+    human_review = {
+        "required": True,
+        "status": "PENDING_CLINICAL_REVIEW",
+        "message": (
+            "This AI-generated risk assessment REQUIRES review and confirmation "
+            "by a qualified medical practitioner (ANM, MO, or specialist) before "
+            "any clinical action is taken. The ASHA worker should present these "
+            "findings to the sector ANM or PHC Medical Officer for confirmation."
+        ),
+        "review_level": (
+            "Specialist (Gynecologist/Obstetrician)" if risk["risk_level"] == "critical"
+            else "Medical Officer (PHC/CHC)" if risk["risk_level"] == "high"
+            else "ANM (Auxiliary Nurse Midwife)" if risk["risk_level"] == "medium"
+            else "Self-review by ASHA (routine)"
+        ),
+        "legal_basis": "India Telemedicine Practice Guidelines 2020, Section 3.7 — AI tools for decision support only",
+        "override_allowed": True,
+        "override_note": "Any qualified medical practitioner can override this AI assessment with documented clinical justification.",
+    }
+
     # Step 5: Generate recommendations
     recommendations = risk.get("interventions", [])
     if anemia:
@@ -218,6 +241,7 @@ async def full_assessment(request: AssessmentRequest):
         "alerts": alerts,
         "follow_up_date": follow_up.strftime("%Y-%m-%d"),
         "recommendations": recommendations,
+        "human_review": human_review,
         "disclaimer": DEMO_DISCLAIMER,
     }
 

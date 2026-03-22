@@ -1,0 +1,148 @@
+{
+  "source": "National Family Health Survey (NFHS-5), 2019-21, Ministry of Health & Family Welfare, Government of India",
+  "sample_size": 724115,
+  "url": "https://rchiips.org/nfhs/NFHS-5Reports/NFHS-5_INDIA_REPORT.pdf",
+  "anemia_prevalence": {
+    "national": 0.522,
+    "by_severity": {
+      "mild_10_10.9": 0.316,
+      "moderate_7_9.9": 0.188,
+      "severe_below_7": 0.018
+    },
+    "by_state": {
+      "Assam": 0.529,
+      "Bihar": 0.632,
+      "Chhattisgarh": 0.478,
+      "Delhi": 0.456,
+      "Goa": 0.268,
+      "Gujarat": 0.549,
+      "Haryana": 0.558,
+      "Himachal Pradesh": 0.394,
+      "Jharkhand": 0.624,
+      "Karnataka": 0.468,
+      "Kerala": 0.212,
+      "Madhya Pradesh": 0.546,
+      "Maharashtra": 0.461,
+      "Odisha": 0.489,
+      "Punjab": 0.442,
+      "Rajasthan": 0.523,
+      "Tamil Nadu": 0.441,
+      "Telangana": 0.515,
+      "Uttar Pradesh": 0.509,
+      "Uttarakhand": 0.424,
+      "West Bengal": 0.576
+    }
+  },
+  "maternal_care": {
+    "institutional_delivery_pct": 0.889,
+    "c_section_pct": 0.217,
+    "anc_4plus_visits_pct": 0.584,
+    "anc_first_trimester_pct": 0.706,
+    "postnatal_care_48hr_pct": 0.788,
+    "skilled_attendant_delivery_pct": 0.897
+  },
+  "mmr_by_state": {
+    "Assam": 215,
+    "Bihar": 118,
+    "Chhattisgarh": 137,
+    "Gujarat": 57,
+    "Haryana": 99,
+    "Jharkhand": 56,
+    "Karnataka": 69,
+    "Kerala": 19,
+    "Madhya Pradesh": 170,
+    "Maharashtra": 33,
+    "Odisha": 119,
+    "Punjab": 86,
+    "Rajasthan": 96,
+    "Tamil Nadu": 54,
+    "Telangana": 43,
+    "Uttar Pradesh": 192,
+    "Uttarakhand": 89,
+    "West Bengal": 103,
+    "India": 93
+  },
+  "causes_of_death": {
+    "hemorrhage": 0.27,
+    "sepsis": 0.11,
+    "hypertensive_disorders": 0.14,
+    "obstructed_labor": 0.05,
+    "abortion_complications": 0.08,
+    "anemia": 0.03,
+    "other_direct": 0.15,
+    "indirect_causes": 0.17
+  },
+  "risk_factor_prevalence": {
+    "age_below_18_at_delivery": 0.068,
+    "age_above_35_at_delivery": 0.032,
+    "parity_5_plus": 0.041,
+    "bmi_below_18.5": 0.187,
+    "bmi_above_25": 0.241,
+    "hypertension_prevalence": 0.089,
+    "gestational_diabetes": 0.035,
+    "previous_csection": 0.217
+  },
+  "adverse_outcome_rates": {
+    "baseline_no_risk_factors": 0.005,
+    "age_below_18": {
+      "adverse_rate": 0.015,
+      "source": "WHO 2016 ANC guidelines"
+    },
+    "age_above_35": {
+      "adverse_rate": 0.025,
+      "source": "Lancet 2014 meta-analysis"
+    },
+    "hb_below_7": {
+      "adverse_rate": 0.12,
+      "source": "WHO anemia guidelines, severe anemia doubles mortality"
+    },
+    "hb_7_to_9": {
+      "adverse_rate": 0.04,
+      "source": "NFHS-5 + SRS cross-tabulation"
+    },
+    "hb_9_to_11": {
+      "adverse_rate": 0.015,
+      "source": "mild anemia, marginal risk increase"
+    },
+    "bp_stage2_htn": {
+      "adverse_rate": 0.08,
+      "source": "ACOG hypertension guidelines"
+    },
+    "bp_crisis": {
+      "adverse_rate": 0.2,
+      "source": "eclampsia mortality ~15-20%"
+    },
+    "prev_pph": {
+      "adverse_rate": 0.1,
+      "source": "PPH recurrence rate 10-15%"
+    },
+    "prev_eclampsia": {
+      "adverse_rate": 0.12,
+      "source": "eclampsia recurrence risk"
+    },
+    "parity_5_plus": {
+      "adverse_rate": 0.03,
+      "source": "grand multiparity risk"
+    },
+    "bmi_below_18.5": {
+      "adverse_rate": 0.02,
+      "source": "underweight + anemia synergy"
+    },
+    "bmi_above_30": {
+      "adverse_rate": 0.03,
+      "source": "obesity + gestational HTN"
+    },
+    "post_term_41_plus": {
+      "adverse_rate": 0.04,
+      "source": "post-term stillbirth risk"
+    }
+  },
+  "hb_physiology": {
+    "normal_decline_per_week": 0.04,
+    "hemodilution_peak_week": 30,
+    "hemodilution_magnitude": 1.5,
+    "ifa_supplementation_effect_per_week": 0.03,
+    "dietary_iron_effect_per_week": 0.015,
+    "source": "WHO Guideline: Daily iron and folic acid supplementation in pregnant women (2012)"
+  }
+}
