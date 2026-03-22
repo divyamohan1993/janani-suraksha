@@ -29,8 +29,9 @@ router = APIRouter(prefix="/api/v1", tags=["v1"])
 
 DEMO_DISCLAIMER = (
     "DEMONSTRATION ONLY — NOT FOR CLINICAL USE. "
-    "This system uses synthetic data and approximate risk models that have not been "
-    "clinically validated. Do not use for real medical decisions. "
+    "Risk scores and anemia predictions use approximate models that have not been "
+    "clinically validated. Facility data is sourced from data.gov.in (Government of India). "
+    "Do not use for real medical decisions. "
     "Always consult a qualified healthcare provider."
 )
 

@@ -34,7 +34,7 @@
 - ~9MB in memory, <5ms response time
 
 ### Engine 2: Emergency Referral Routing
-- 200+ health facilities with real-time capability mapping
+- 10,065 real health facilities from data.gov.in (Ministry of Health & Family Welfare) across 23 Indian states, with Google Maps geocoding and one-click navigation
 - Precomputed Dijkstra shortest-path trees per capability level
 - Routes to nearest FUNCTIONAL facility (not just nearest)
 - Considers: specialist availability, blood bank, OT status
@@ -64,7 +64,7 @@
 │ Engine 1:    │ │ Engine 2: │ │ Engine 3:    │
 │ Risk Scoring │ │ Referral  │ │ Anemia       │
 │ (70K entries)│ │ Routing   │ │ Prediction   │
-│ O(1) lookup  │ │ (200+     │ │ (7,480       │
+│ O(1) lookup  │ │ (10,065   │ │ (7,480       │
 │              │ │ facilities│ │ trajectories)│
 │ Beta-Binomial│ │ Dijkstra  │ │ Learned      │
 │ Posterior    │ │ SPTs)     │ │ Index)       │
@@ -87,6 +87,10 @@
 
 ### Local Development
 ```bash
+# Set up environment variables
+cp .env.example .env
+# Edit .env — add your data.gov.in and Google Maps API keys
+
 # Install dependencies
 make install
 
@@ -185,6 +189,8 @@ janani-suraksha/
 | IaC | Terraform |
 | Cloud | Google Cloud Run (scale-to-zero) |
 | Registry | Google Artifact Registry |
+| Facility Data | data.gov.in API (Real facility data) |
+| Geocoding | Google Maps API (Geocoding + navigation) |
 
 ## Defense in Depth Security
 
@@ -206,6 +212,7 @@ Six security layers:
 | POST | `/api/v1/anemia-predict` | O(1) anemia progression prediction |
 | POST | `/api/v1/assessment` | Full ASHA worker assessment flow |
 | GET | `/api/v1/facilities` | List all facilities |
+| GET | `/api/v1/nearby-facilities` | Find nearby real facilities (data.gov.in) |
 
 ### Example: Full Assessment
 ```bash
@@ -242,18 +249,21 @@ curl -X POST https://janani-suraksha-pax2obvj3a-el.a.run.app/api/v1/assessment \
 - **Artifact Registry**: 60MB image, within free tier
 - **No GPU** required at runtime
 - **No database** — all data precomputed and baked into container
+- **Facility data** is pre-fetched at build time — no runtime API cost for facility lookups
 
 ## Evidence Base & Limitations
 
+**Real data**: Facility data (10,065 facilities) is sourced from data.gov.in (Government of India, Ministry of Health & Family Welfare). Geocoding is provided by Google Maps.
+
 **What IS proven**: Bayesian conjugate priors, obstetric risk factors, Three Delays framework (validated 50+ countries)
 
-**What needs validation**: Risk threshold calibration, ASHA adoption, MMR reduction (requires 18-month RCT)
+**What needs validation**: Risk threshold calibration, ASHA adoption, MMR reduction (requires 18-month RCT). Risk scores and anemia predictions use approximate models that have not been clinically validated.
 
 See the [About page](https://janani-suraksha-pax2obvj3a-el.a.run.app/about) for the full honest assessment.
 
 ## Roadmap
 
-- [x] Three O(1) engines (70K + 200 + 7,480 entries)
+- [x] Three O(1) engines (70K + 10,065 real facilities + 7,480 entries)
 - [x] Full-stack web application on GCP Cloud Run
 - [x] 34/34 tests passing, defense-in-depth security
 - [x] Terraform IaC — one-click deploy
