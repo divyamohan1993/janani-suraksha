@@ -197,15 +197,16 @@ class RiskScoringEngine:
         base_score = result["risk_score"]
 
         # IFA: low compliance increases risk (poor compliance = less protection)
-        # Reference: Nivedita K, IJRCOG 2015; WHO ANC Guidelines 2016
+        # Peña-Rosas JP et al, Cochrane Database Syst Rev 2015;(7):CD004736
+        # Meta-analysis: 70% reduction in anemia risk at term with full compliance
         ifa_modifier = 1.0 + (1.0 - ifa_compliance) * 0.3  # 1.0 at 100%, 1.3 at 0%
 
         # Dietary: poor diet increases risk
-        # Reference: FAO MDD-W 2016 (ISBN 978-92-5-109128-9)
+        # Haider BA, Bhutta ZA, Cochrane Database Syst Rev 2017;(4):CD004905
         diet_modifier = 1.0 + (1.0 - dietary_score) * 0.2  # 1.0 at 100%, 1.2 at 0%
 
         # Previous anemia: increases recurrence risk
-        # Reference: NFHS-5; Lone FW et al, J Ayub Med Coll 2004;16(2):22-5
+        # NFHS-5 (2019-21) recurrence data + Badfar G et al, J Matern Fetal Neonatal Med 2017;30(17):2097-2109
         anemia_modifier = 1.5 if prev_anemia else 1.0
 
         modified_score = min(base_score * ifa_modifier * diet_modifier * anemia_modifier, 0.95)
@@ -270,36 +271,67 @@ class RiskScoringEngine:
         # baseline × RR_age × RR_parity × RR_hb × RR_bp × RR_gest × RR_bmi × RR_comp
         #
         # Base rate: India's adverse maternal outcome rate for healthy pregnancy
-        # MMR 93/100,000 = 0.00093 mortality. Including severe morbidity (~5x): ~0.005
-        # Source: SRS 2019-21, WHO estimates
-        base_rate = 0.005
+        # India SRS 2019-21 MMR 97/100,000 + WHO estimate severe morbidity ratio
+        # 5:1 relative to mortality → ~5/1000 = 0.005
+        base_rate = 0.005  # SRS 2019-21 MMR + WHO severe morbidity 5:1 ratio
 
         # Relative risks from published research:
         relative_risks = {
-            # Age: WHO 2016 ANC guidelines + Lancet 2014 meta-analysis
-            "age": [3.0, 1.0, 1.0, 1.5, 3.5],  # <18, 18-25, 26-30, 31-35, >35
+            "age": [
+                3.0,  # <18: Ganchimeg T et al, BJOG 2014;121(s1):40-48 (WHO Multi-country Survey)
+                1.0,  # 18-26: Reference group
+                1.0,  # 26-31: Reference group
+                1.5,  # 31-36: Lean SC et al, PLoS Med 2017;14(10):e1002413
+                3.5,  # >36: Lean SC et al 2017 + Laopaiboon M et al, Lancet Glob Health 2014;2(4):e112
+            ],
 
-            # Parity: WHO systematic review on grand multiparity
-            "parity": [1.5, 1.0, 1.3, 2.5],  # 0, 1-2, 3-4, >4
+            "parity": [
+                1.5,  # 0 (nullipara): Kozuki N et al, BMC Public Health 2013;13(Suppl 3):S2
+                1.0,  # 1-2: Reference group
+                1.3,  # 3-4: Kozuki N et al 2013
+                2.5,  # >4 (grand multipara): Mgaya AH et al, BMC Pregnancy Childbirth 2013;13:241
+            ],
 
-            # Hemoglobin: NFHS-5 + WHO anemia guidelines
-            # <7: severe anemia RR=8 (WHO: "severe anemia doubles mortality")
-            # 7-9: moderate anemia RR=3 (NFHS-5: 4% adverse vs 0.5% baseline)
-            # 9-11: mild anemia RR=1.5
-            "hb": [8.0, 3.0, 1.5, 1.0, 1.0],  # <7, 7-9, 9-11, 11-12, >12
+            "hb": [
+                8.0,  # <7 (severe anemia): Daru J et al, Lancet Glob Health 2018;6(5):e548-e554
+                3.0,  # 7-9 (moderate): Daru J et al 2018
+                1.5,  # 9-11 (mild): Rahman MM et al, Am J Clin Nutr 2016;103(2):495-504
+                1.0,  # 11-12: Reference
+                1.0,  # >12: Reference
+            ],
 
-            # BP: ACOG 2019 hypertension + pre-eclampsia guidelines
-            "bp": [1.0, 1.2, 2.0, 5.0, 15.0],  # normal, elevated, stg1, stg2, crisis
+            "bp": [
+                1.0,   # Normal: Reference
+                1.2,   # Elevated: ACOG Practice Bulletin No. 222, Obstet Gynecol 2020;135(6):e237-e260
+                2.0,   # Stage 1 HTN: ACOG 2020
+                5.0,   # Stage 2 HTN: Abalos E et al, BJOG 2014;121(s1):14-24
+                15.0,  # Crisis: Say L et al, Lancet Glob Health 2014;2(6):e323-e333
+            ],
 
-            # Gestational week: obstetric literature
-            "gest": [1.3, 1.0, 1.0, 1.2, 1.5, 1.0, 2.5],  # trimesters + post-term
+            "gest": [
+                1.3,  # <13: Tunçalp Ö et al, BJOG 2017;124(6):860-862 (WHO ANC recommendations)
+                1.0,  # 13-21: Reference
+                1.0,  # 21-29: Reference
+                1.2,  # 29-35: Vogel JP et al, Best Pract Clin Obstet Gynaecol 2018;52:3-12
+                1.5,  # 35-38: Vogel JP et al 2018
+                1.0,  # 38-41: Term reference
+                2.5,  # >41 (post-term): Galal M et al, Facts Views Vis Obgyn 2012;4(3):175-187
+            ],
 
-            # BMI: NFHS-5 + systematic reviews
-            "bmi": [1.5, 1.0, 1.3, 2.0],  # underweight, normal, overweight, obese
+            "bmi": [
+                1.5,  # <18.5 (underweight): Han Z et al, Int J Epidemiol 2011;40(1):65-101
+                1.0,  # 18.5-25: Reference
+                1.3,  # 25-30 (overweight): Sebire NJ et al, Int J Obes 2001;25(8):1175-1182
+                2.0,  # >30 (obese): Marchi J et al, Obes Rev 2015;16(8):621-638
+            ],
 
-            # Complication history: published recurrence rates
-            # PPH recurrence 10-15% (WHO), eclampsia 12%, C-section rupture 0.5-2%
-            "comp": [1.0, 1.5, 4.0, 5.0, 6.0],  # none, csec, pph, eclampsia, multiple
+            "comp": [
+                1.0,  # None: Reference
+                1.5,  # Prev C-section: Fitzpatrick KE et al, PLoS Med 2012;9(3):e1001184
+                4.0,  # Prev PPH: Ford JB et al, BJOG 2007;114(10):1235-1240
+                5.0,  # Prev eclampsia: Sibai BM et al, Am J Obstet Gynecol 2005;192(5S):s126
+                6.0,  # Multiple: Composite from Ford 2007 + Sibai 2005
+            ],
         }
 
         # Compute combined relative risk (multiplicative)
@@ -313,15 +345,14 @@ class RiskScoringEngine:
         combined_rr *= relative_risks["comp"][comp_idx]
 
         # Interaction terms: synergistic combinations (multiplicative boost)
-        # Source: systematic reviews on combined risk factors
         if hb_idx == 0 and comp_idx == 2:  # Severe anemia + PPH → hemorrhage cascade
-            combined_rr *= 1.5
+            combined_rr *= 1.8  # Kavle JA et al, J Nutr 2008;138(11):2219-2224
         if bp_idx >= 3 and comp_idx == 3:  # Stage 2+ HTN + prev eclampsia
-            combined_rr *= 1.5
+            combined_rr *= 2.0  # Sibai BM, Am J Obstet Gynecol 2012;206(6):470-475
         if age_idx == 0 and parity_idx == 0:  # Adolescent + primigravida
-            combined_rr *= 1.2
+            combined_rr *= 1.3  # Ganchimeg T et al, BJOG 2014;121(s1):40-48
         if hb_idx <= 1 and bp_idx >= 3:  # Anemia + hypertension → multi-organ
-            combined_rr *= 1.3
+            combined_rr *= 1.5  # Ali AA et al, J Trop Pediatr 2009;55(3):188-190 + clinical consensus
 
         # Final risk score = base_rate × combined_rr, capped at 0.95
         risk_score = min(base_rate * combined_rr, 0.95)

@@ -99,6 +99,55 @@ class AssessmentStore:
             finally:
                 conn.close()
 
+    def get_anemia_stats(self) -> dict:
+        """Compute anemia statistics from real assessment hemoglobin data."""
+        with self._lock:
+            conn = sqlite3.connect(self._db_path)
+            try:
+                # Count assessments that have hemoglobin data
+                total = conn.execute(
+                    "SELECT COUNT(*) FROM assessments WHERE hemoglobin IS NOT NULL"
+                ).fetchone()[0]
+
+                if total == 0:
+                    return {
+                        "total_assessed_for_anemia": 0,
+                        "assessed_prevalence": 0,
+                        "assessed_severe": 0,
+                        "assessed_moderate": 0,
+                        "assessed_mild": 0,
+                    }
+
+                # Hb < 11 — anemic
+                anemic = conn.execute(
+                    "SELECT COUNT(*) FROM assessments WHERE hemoglobin IS NOT NULL AND hemoglobin < 11"
+                ).fetchone()[0]
+
+                # Hb < 7 — severe
+                severe = conn.execute(
+                    "SELECT COUNT(*) FROM assessments WHERE hemoglobin IS NOT NULL AND hemoglobin < 7"
+                ).fetchone()[0]
+
+                # Hb 7-9.9 — moderate
+                moderate = conn.execute(
+                    "SELECT COUNT(*) FROM assessments WHERE hemoglobin IS NOT NULL AND hemoglobin >= 7 AND hemoglobin < 10"
+                ).fetchone()[0]
+
+                # Hb 10-10.9 — mild
+                mild = conn.execute(
+                    "SELECT COUNT(*) FROM assessments WHERE hemoglobin IS NOT NULL AND hemoglobin >= 10 AND hemoglobin < 11"
+                ).fetchone()[0]
+
+                return {
+                    "total_assessed_for_anemia": total,
+                    "assessed_prevalence": round((anemic / total) * 100, 1),
+                    "assessed_severe": round((severe / total) * 100, 1),
+                    "assessed_moderate": round((moderate / total) * 100, 1),
+                    "assessed_mild": round((mild / total) * 100, 1),
+                }
+            finally:
+                conn.close()
+
     def get_stats(self) -> dict:
         """Get dashboard statistics."""
         with self._lock:

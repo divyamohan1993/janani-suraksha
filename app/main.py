@@ -128,7 +128,6 @@ templates = Jinja2Templates(directory=str(templates_dir))
 async def home(request: FastAPIRequest):
     return templates.TemplateResponse("index.html", {
         "request": request,
-        "google_maps_key": settings.google_maps_api_key,
     })
 
 
@@ -136,7 +135,6 @@ async def home(request: FastAPIRequest):
 async def dashboard(request: FastAPIRequest):
     return templates.TemplateResponse("dashboard.html", {
         "request": request,
-        "google_maps_key": settings.google_maps_api_key,
     })
 
 

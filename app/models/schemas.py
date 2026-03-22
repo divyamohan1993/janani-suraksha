@@ -22,7 +22,8 @@ class RiskFactors(BaseModel):
     hemoglobin: float = Field(ge=3.0, le=20.0, description="Hemoglobin in g/dL")
     bp_systolic: int = Field(ge=60, le=250)
     bp_diastolic: int = Field(ge=30, le=160)
-    gestational_weeks: int = Field(ge=1, le=45)
+    # Max 42 weeks per ACOG Practice Bulletin No. 146 (2014): post-term pregnancies require immediate clinical management
+    gestational_weeks: int = Field(ge=1, le=42)
     height_cm: float = Field(ge=100, le=220)
     weight_kg: float = Field(ge=25, le=200)
     complication_history: ComplicationHistory
@@ -70,7 +71,8 @@ class ReferralResult(BaseModel):
 
 class AnemiaInput(BaseModel):
     initial_hb: float = Field(ge=3.0, le=20.0, description="Initial hemoglobin in g/dL")
-    gestational_weeks: int = Field(ge=1, le=45)
+    # Max 42 weeks per ACOG Practice Bulletin No. 146 (2014): post-term pregnancies require immediate clinical management
+    gestational_weeks: int = Field(ge=1, le=42)
     ifa_compliance: float = Field(ge=0.0, le=1.0, description="IFA tablet compliance rate")
     dietary_score: float = Field(ge=0.0, le=1.0)
     prev_anemia: bool

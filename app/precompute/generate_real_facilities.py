@@ -6,20 +6,28 @@ import urllib.parse
 import urllib.request
 from pathlib import Path
 
-DATA_GOV_API_KEY = os.environ.get(
-    "JANANI_DATA_GOV_API_KEY",
-    "579b464db66ec23bdd000001415c1391a2264892730be75249727233"
-)
+DATA_GOV_API_KEY = os.environ.get("DATA_GOV_API_KEY")
+if not DATA_GOV_API_KEY:
+    raise RuntimeError(
+        "DATA_GOV_API_KEY environment variable is required but not set. "
+        "Get an API key from https://data.gov.in and set it before running this script."
+    )
 RESOURCES = [
     "7d208ae4-5d65-47ec-8cb8-2a7a7ac89f8c",
     "37670b6f-c236-49a7-8cd7-cc2dc610e32d",
 ]
 STATES = [
-    "Andhra Pradesh", "Assam", "Bihar", "Chhattisgarh", "Delhi", "Goa",
-    "Gujarat", "Haryana", "Himachal Pradesh", "Jammu and Kashmir",
+    # 28 States
+    "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar",
+    "Chhattisgarh", "Goa", "Gujarat", "Haryana", "Himachal Pradesh",
     "Jharkhand", "Karnataka", "Kerala", "Madhya Pradesh", "Maharashtra",
-    "Odisha", "Punjab", "Rajasthan", "Tamil Nadu", "Telangana",
+    "Manipur", "Meghalaya", "Mizoram", "Nagaland", "Odisha", "Punjab",
+    "Rajasthan", "Sikkim", "Tamil Nadu", "Telangana", "Tripura",
     "Uttar Pradesh", "Uttarakhand", "West Bengal",
+    # Union Territories
+    "Andaman and Nicobar Islands", "Chandigarh",
+    "Dadra and Nagar Haveli and Daman and Diu", "Delhi",
+    "Jammu and Kashmir", "Ladakh", "Lakshadweep", "Puducherry",
 ]
 
 

@@ -5,7 +5,7 @@ import uuid
 
 logger = logging.getLogger("janani.routes")
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Request
 
 from app.persistence import AssessmentStore
 from app.models.schemas import (
@@ -75,6 +75,31 @@ async def health_check():
             "anemia_prediction": _anemia_engine.is_loaded if _anemia_engine else False,
         }
     }
+
+
+@router.get("/maps-config")
+async def maps_config(request: Request):
+    """Return Google Maps API key only to requests from allowed referers."""
+    from app.config import get_settings
+    settings = get_settings()
+    referer = request.headers.get("referer", "")
+    host = request.headers.get("host", "")
+    # Allow requests from same origin or configured allowed origins
+    allowed = False
+    if referer:
+        for origin in settings.allowed_origins:
+            if referer.startswith(origin):
+                allowed = True
+                break
+        # Also allow same-host requests (dev/localhost)
+        if host and host in referer:
+            allowed = True
+    else:
+        # No referer — allow if it's a same-origin fetch (e.g., localhost dev)
+        allowed = True
+    if not allowed:
+        raise HTTPException(status_code=403, detail="Forbidden")
+    return {"key": settings.google_maps_api_key}
 
 
 @router.post("/risk-score")
@@ -269,8 +294,31 @@ async def full_assessment(request: AssessmentRequest):
 async def dashboard_stats():
     """Real-time dashboard statistics from actual assessments."""
     if not _assessment_store:
-        return {"total_assessments": 0, "today_assessments": 0, "high_risk": 0, "critical_alerts": 0, "risk_distribution": {}}
-    return _assessment_store.get_stats()
+        return {
+            "total_assessments": 0, "today_assessments": 0,
+            "high_risk": 0, "critical_alerts": 0, "risk_distribution": {},
+            "anemia_stats": {
+                "national_prevalence": 52.2,
+                "national_source": "NFHS-5 (2019-21), IIPS Mumbai. 724,115 women surveyed.",
+                "assessed_prevalence": 0,
+                "assessed_severe": 0,
+                "assessed_moderate": 0,
+                "assessed_mild": 0,
+                "total_assessed_for_anemia": 0,
+            }
+        }
+    stats = _assessment_store.get_stats()
+    anemia = _assessment_store.get_anemia_stats()
+    stats["anemia_stats"] = {
+        "national_prevalence": 52.2,
+        "national_source": "NFHS-5 (2019-21), IIPS Mumbai. 724,115 women surveyed.",
+        "assessed_prevalence": anemia["assessed_prevalence"],
+        "assessed_severe": anemia["assessed_severe"],
+        "assessed_moderate": anemia["assessed_moderate"],
+        "assessed_mild": anemia["assessed_mild"],
+        "total_assessed_for_anemia": anemia["total_assessed_for_anemia"],
+    }
+    return stats
 
 
 @router.get("/recent-assessments")

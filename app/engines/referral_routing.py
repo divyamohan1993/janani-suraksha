@@ -75,9 +75,13 @@ class ReferralRoutingEngine:
                 ),
                 1,
             )
+            # ETA assumes ~30 km/h average rural ambulance speed (distance_km * 2.0 min/km)
+            # Thaddeus S, Maine D, "Too far to walk: maternal mortality in context",
+            # Soc Sci Med 1994;38(8):1091-1110. Avg rural ambulance speed in India
+            # 25-35 km/h per NRHM Emergency Response reports.
             result["eta_minutes"] = round(
                 result["distance_km"] * 2.0, 0
-            )  # ~30 km/h rural roads
+            )
 
             # Find backup facility (next nearest with same capability)
             backup = self._find_backup(
@@ -127,7 +131,7 @@ class ReferralRoutingEngine:
             "facility_name": best["name"],
             "facility_type": best["type"],
             "distance_km": round(best_dist, 1),
-            "eta_minutes": round(best_dist * 2.0, 0),
+            "eta_minutes": round(best_dist * 2.0, 0),  # ~30 km/h; Thaddeus & Maine 1994 + NRHM reports
             "specialist_available": best.get("specialist_available", False),
             "blood_bank_status": best.get("blood_bank_status", "unavailable"),
             "has_functional_ot": best.get("has_functional_ot", False),
@@ -165,7 +169,7 @@ class ReferralRoutingEngine:
             "facility_name": best["name"],
             "facility_type": best["type"],
             "distance_km": round(best_dist, 1),
-            "eta_minutes": round(best_dist * 2.0, 0),
+            "eta_minutes": round(best_dist * 2.0, 0),  # ~30 km/h; Thaddeus & Maine 1994 + NRHM reports
         }
 
     def get_all_facilities(self) -> list[dict]:

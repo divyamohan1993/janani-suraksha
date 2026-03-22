@@ -206,18 +206,49 @@ class RealFacilityFinder:
         return results[:30]
 
     def _guess_state(self, lat: float, lon: float) -> str:
+        # All 28 states + 8 Union Territories with real capital coordinates
         states = [
-            (28.6, 77.2, "Delhi"), (26.85, 80.95, "Uttar Pradesh"),
-            (25.6, 85.1, "Bihar"), (22.6, 88.4, "West Bengal"),
-            (19.1, 73.0, "Maharashtra"), (13.0, 77.6, "Karnataka"),
-            (26.9, 75.8, "Rajasthan"), (23.3, 77.4, "Madhya Pradesh"),
-            (11.0, 76.9, "Tamil Nadu"), (17.4, 78.5, "Telangana"),
-            (10.9, 76.3, "Kerala"), (23.0, 72.6, "Gujarat"),
-            (20.3, 85.8, "Odisha"), (30.7, 76.8, "Punjab"),
-            (26.1, 91.7, "Assam"), (30.3, 78.0, "Uttarakhand"),
+            # 28 States
+            (16.5062, 80.6480, "Andhra Pradesh"),
+            (27.0844, 93.6053, "Arunachal Pradesh"),
+            (26.1433, 91.7898, "Assam"),
+            (25.6093, 85.1376, "Bihar"),
+            (21.2514, 81.6296, "Chhattisgarh"),
+            (15.4909, 73.8278, "Goa"),
+            (23.2156, 72.6369, "Gujarat"),
+            (30.7333, 76.7794, "Haryana"),
+            (31.1048, 77.1734, "Himachal Pradesh"),
+            (23.3441, 85.3096, "Jharkhand"),
+            (12.9716, 77.5946, "Karnataka"),
+            (8.5241, 76.9366, "Kerala"),
+            (23.2599, 77.4126, "Madhya Pradesh"),
+            (19.0760, 72.8777, "Maharashtra"),
+            (24.8170, 93.9368, "Manipur"),
+            (25.5788, 91.8933, "Meghalaya"),
+            (23.7271, 92.7176, "Mizoram"),
+            (25.6751, 94.1086, "Nagaland"),
+            (20.2961, 85.8245, "Odisha"),
+            (30.7333, 76.7794, "Punjab"),
+            (26.9124, 75.7873, "Rajasthan"),
+            (27.3389, 88.6065, "Sikkim"),
+            (13.0827, 80.2707, "Tamil Nadu"),
+            (17.3850, 78.4867, "Telangana"),
+            (23.8315, 91.2868, "Tripura"),
+            (26.8467, 80.9462, "Uttar Pradesh"),
+            (30.3165, 78.0322, "Uttarakhand"),
+            (22.5726, 88.3639, "West Bengal"),
+            # 8 Union Territories
+            (11.6234, 92.7265, "Andaman and Nicobar Islands"),
+            (30.7333, 76.7794, "Chandigarh"),
+            (20.3974, 72.8328, "Dadra and Nagar Haveli and Daman and Diu"),
+            (28.6139, 77.2090, "Delhi"),
+            (34.0837, 74.7973, "Jammu and Kashmir"),
+            (34.1526, 77.5771, "Ladakh"),
+            (10.5593, 72.6358, "Lakshadweep"),
+            (11.9416, 79.8083, "Puducherry"),
         ]
         best_dist = float('inf')
-        best_state = "Uttar Pradesh"
+        best_state = ""
         for s_lat, s_lon, state in states:
             d = self._haversine(lat, lon, s_lat, s_lon)
             if d < best_dist:
