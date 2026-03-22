@@ -18,6 +18,25 @@
 
 ---
 
+### Screenshots
+
+<p align="center">
+  <img src="docs/images/hero.png" alt="JananiSuraksha — ASHA Worker Risk Assessment Interface" width="100%">
+  <br><em>ASHA Worker Assessment Interface — literature-informed risk scoring with validated questionnaires</em>
+</p>
+
+<p align="center">
+  <img src="docs/images/assessment-results.png" alt="Risk Assessment Results with Nearby Maternity Hospitals" width="400">
+  <br><em>Risk results: Bayesian risk score, anemia trajectory prediction, 5 nearest maternity hospitals via Google Places</em>
+</p>
+
+<p align="center">
+  <img src="docs/images/pitch-title.png" alt="JananiSuraksha Pitch Deck" width="100%">
+  <br><em>10-slide Guy Kawasaki pitch deck at /pitch</em>
+</p>
+
+---
+
 ## The Problem
 
 - **23,800 maternal deaths annually** in India — one every 22 minutes
