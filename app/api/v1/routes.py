@@ -92,23 +92,22 @@ async def health_check():
 
 @router.get("/maps-config")
 async def maps_config(request: Request):
-    """Return Google Maps API key only to requests from allowed referers."""
+    """Return Google Maps API key only to same-origin requests with valid referer."""
     from app.config import get_settings
     settings = get_settings()
     referer = request.headers.get("referer", "")
     host = request.headers.get("host", "")
-    # Allow requests from same origin or configured allowed origins
+    # Require a referer header — reject bare API calls (curl, etc.)
+    if not referer:
+        raise HTTPException(status_code=403, detail="Forbidden")
+    # Allow requests from configured allowed origins
     allowed = False
-    if referer:
-        for origin in settings.allowed_origins:
-            if referer.startswith(origin):
-                allowed = True
-                break
-        # Also allow same-host requests (dev/localhost)
-        if host and host in referer:
+    for origin in settings.allowed_origins:
+        if referer.startswith(origin):
             allowed = True
-    else:
-        # No referer — allow if it's a same-origin fetch (e.g., localhost dev)
+            break
+    # Also allow same-host requests (dev/localhost)
+    if host and host in referer:
         allowed = True
     if not allowed:
         raise HTTPException(status_code=403, detail="Forbidden")

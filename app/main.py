@@ -170,12 +170,15 @@ async def lifespan(app: FastAPI):
     logger.info("Shutting down JananiSuraksha.")
 
 
-# Create app
+# Create app — disable Swagger/ReDoc in production to prevent API enumeration
+_settings_init = get_settings()
 app = FastAPI(
     title="JananiSuraksha",
     description="AI-Powered Maternal Health Risk Intelligence & Safe Delivery Navigator",
     version="1.0.0",
     lifespan=lifespan,
+    docs_url="/docs" if _settings_init.debug else None,
+    redoc_url="/redoc" if _settings_init.debug else None,
 )
 
 # Defense in depth: security middleware stack (order matters - outermost first)
