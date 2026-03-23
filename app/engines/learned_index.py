@@ -1,7 +1,7 @@
-"""Position-prediction MLP following the learned index paradigm (Kraska et al., 2017).
+"""Position-prediction MLP following the learned index paradigm (Kraska et al., 2018).
 
 Reference: Kraska T et al., "The Case for Learned Index Structures",
-arXiv:1712.01208 (2017).
+SIGMOD 2018:489-504, DOI:10.1145/3183713.3196909 (arXiv:1712.01208, 2017).
 
 A 2-layer MLP (5->64->32->1) approximates the CDF of sorted hemoglobin
 trajectories, predicting the position of the best-matching trajectory

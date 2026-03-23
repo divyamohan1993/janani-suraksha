@@ -77,6 +77,11 @@ class DifferentialPrivacy:
         self._total_budget: float = epsilon
         self._budget_spent: float = 0.0
 
+    @property
+    def epsilon(self) -> float:
+        """Return the privacy parameter epsilon."""
+        return self._epsilon
+
     # ------------------------------------------------------------------
     # Core mechanism
     # ------------------------------------------------------------------

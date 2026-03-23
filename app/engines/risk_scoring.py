@@ -329,7 +329,7 @@ class RiskScoringEngine:
                 1.0,  # None: Reference
                 1.5,  # Prev C-section: Fitzpatrick KE et al, PLoS Med 2012;9(3):e1001184
                 4.0,  # Prev PPH: Ford JB et al, Med J Aust 2007;187(7):391-393
-                5.0,  # Prev eclampsia: Sibai BM et al, Am J Obstet Gynecol 2005;192(5S):s126
+                5.0,  # Prev eclampsia: Sibai BM, Obstet Gynecol 2005;105(2):402-410, DOI:10.1097/01.AOG.0000152351.13671.99
                 6.0,  # Multiple: Composite from Ford 2007 (Med J Aust) + Sibai 2005
             ],
         }

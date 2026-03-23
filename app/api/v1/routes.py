@@ -117,7 +117,7 @@ async def maps_config(request: Request):
 
 @router.post("/risk-score")
 async def risk_score(factors: RiskFactors):
-    """O(1) maternal risk scoring via precomputed relative risk table."""
+    """Maternal risk scoring via precomputed relative risk table."""
     if not _risk_engine:
         raise HTTPException(status_code=503, detail="Risk engine not loaded")
 
@@ -138,7 +138,7 @@ async def risk_score(factors: RiskFactors):
 
 @router.post("/referral")
 async def referral_route(request: ReferralRequest):
-    """O(1) emergency referral routing."""
+    """Emergency referral routing via precomputed spatial index."""
     if not _referral_engine:
         raise HTTPException(status_code=503, detail="Referral engine not loaded")
 
@@ -154,7 +154,7 @@ async def referral_route(request: ReferralRequest):
 
 @router.post("/anemia-predict")
 async def anemia_predict(input_data: AnemiaInput):
-    """O(1) anemia progression prediction."""
+    """Anemia progression prediction via learned index."""
     if not _anemia_engine:
         raise HTTPException(status_code=503, detail="Anemia engine not loaded")
 
@@ -171,11 +171,19 @@ async def anemia_predict(input_data: AnemiaInput):
 
 @router.post("/assessment")
 async def full_assessment(request: AssessmentRequest):
-    """Complete ASHA worker assessment flow combining all three engines."""
+    """Complete ASHA worker assessment: integrated three-engine pipeline.
+
+    Integration flow:
+      1. Engine 1 (Risk Scoring) → initial risk level from 7 clinical dimensions
+      2. Engine 3 (Anemia Prediction) → predicted hemoglobin trajectory
+      3. Engine 1 (Re-score) → risk re-evaluated with predicted delivery Hb
+      4. Risk level → capability mapping → Engine 2 (Referral Routing)
+      5. Blood bank CMS → enriches referral with inventory estimate
+    """
     if not _risk_engine or not _referral_engine or not _anemia_engine:
         raise HTTPException(status_code=503, detail="Engines not loaded")
 
-    # Step 1: Risk scoring (includes IFA, dietary, prev_anemia modifiers)
+    # --- Step 1: Initial risk scoring from current clinical parameters ---
     risk = _risk_engine.score(
         age=request.risk_factors.age,
         parity=request.risk_factors.parity,
@@ -191,7 +199,7 @@ async def full_assessment(request: AssessmentRequest):
         prev_anemia=request.prev_anemia,
     )
 
-    # Step 2: Anemia prediction (if Hb < 11)
+    # --- Step 2: Anemia prediction — Engine 3 produces Hb trajectory ---
     anemia = None
     if request.risk_factors.hemoglobin < 11.0:
         anemia = _anemia_engine.predict(
@@ -202,36 +210,116 @@ async def full_assessment(request: AssessmentRequest):
             prev_anemia=request.prev_anemia,
         )
 
-    # Step 3: Referral — find nearest REAL hospital via Google Places
-    referral = None
-    if risk["risk_level"] in ("high", "critical") and _real_facilities:
-        try:
-            nearby = await _real_facilities.find_nearby(
-                request.latitude, request.longitude, radius_km=50)
-            if nearby:
-                top = nearby[0]
-                referral = {
-                    "facility_name": top["name"],
-                    "facility_type": top.get("category", "Hospital"),
-                    "distance_km": top["distance_km"],
-                    "eta_minutes": round(top["distance_km"] * 2, 0) if top["distance_km"] else None,
-                    "specialist_available": True,
-                    "blood_bank_status": "available",
-                    "has_functional_ot": True,
-                    "contact_phone": top.get("phone", "108"),
-                    "navigation_url": top["navigation_url"],
-                    "backup_facility": nearby[1] if len(nearby) > 1 else None,
-                    "source": "google_places",
-                }
-        except Exception as e:
-            logger.warning(f"Real facility lookup failed: {e}")
+    # --- Step 3: Hb feedback — re-score risk with predicted delivery Hb ---
+    # Engine 3 output feeds back into Engine 1: if predicted delivery Hb is
+    # worse than current Hb, re-evaluate risk using the projected value.
+    # This closes the Engine 1 ↔ Engine 3 integration loop.
+    risk_adjusted = False
+    if anemia and anemia.get("predicted_delivery_hb") is not None:
+        predicted_hb = anemia["predicted_delivery_hb"]
+        if predicted_hb < request.risk_factors.hemoglobin:
+            adjusted_risk = _risk_engine.score(
+                age=request.risk_factors.age,
+                parity=request.risk_factors.parity,
+                hemoglobin=predicted_hb,
+                bp_systolic=request.risk_factors.bp_systolic,
+                bp_diastolic=request.risk_factors.bp_diastolic,
+                gestational_weeks=request.risk_factors.gestational_weeks,
+                height_cm=request.risk_factors.height_cm,
+                weight_kg=request.risk_factors.weight_kg,
+                complication_history=request.risk_factors.complication_history.value,
+                ifa_compliance=request.ifa_compliance,
+                dietary_score=request.dietary_score,
+                prev_anemia=request.prev_anemia,
+            )
+            # Use the worse of current vs. projected risk
+            risk_levels = {"low": 0, "medium": 1, "high": 2, "critical": 3}
+            if risk_levels.get(adjusted_risk["risk_level"], 0) > risk_levels.get(risk["risk_level"], 0):
+                risk["initial_risk_level"] = risk["risk_level"]
+                risk["initial_risk_score"] = risk["risk_score"]
+                risk["risk_level"] = adjusted_risk["risk_level"]
+                risk["risk_score"] = adjusted_risk["risk_score"]
+                risk["adjusted_for_predicted_hb"] = predicted_hb
+                risk_adjusted = True
 
-    # Step 4: Generate alerts
+    # --- Step 4: Risk level → facility capability mapping ---
+    # Engine 1 output drives Engine 2 input: risk level determines the
+    # minimum facility capability required for safe referral.
+    # Based on India's EmOC framework (WHO/UNFPA/UNICEF/AMDD 2009):
+    #   critical → comprehensive_emoc (C-section + blood transfusion capability)
+    #   high     → blood_transfusion (functional blood bank required)
+    #   medium   → basic_emoc (basic emergency obstetric care)
+    #   low      → basic_emoc (routine ANC facility)
+    _RISK_TO_CAPABILITY = {
+        "critical": "comprehensive_emoc",
+        "high": "blood_transfusion",
+        "medium": "basic_emoc",
+        "low": "basic_emoc",
+    }
+    capability_required = _RISK_TO_CAPABILITY[risk["risk_level"]]
+
+    # --- Step 5: Referral routing via precomputed spatial index ---
+    # Engine 2 uses capability_required (from Engine 1) + GPS to find the
+    # nearest facility with the required medical capabilities.
+    referral = None
+    if risk["risk_level"] in ("high", "critical", "medium"):
+        # Primary: precomputed spatial index (10,602 geocoded facilities)
+        if _referral_engine and _referral_engine.is_loaded:
+            referral = _referral_engine.route(
+                latitude=request.latitude,
+                longitude=request.longitude,
+                capability_required=capability_required,
+                risk_level=risk["risk_level"],
+            )
+            referral["capability_matched"] = capability_required
+            referral["source"] = "precomputed_spatial_index"
+
+            # --- Step 5b: Blood bank inventory via Count-Min Sketch ---
+            # Enrich referral with probabilistic blood bank availability
+            if _blood_bank and capability_required in ("blood_transfusion", "comprehensive_emoc"):
+                try:
+                    bb_status = _blood_bank.query_availability(
+                        blood_type="O+",
+                        facility_id=referral.get("facility_name"),
+                    )
+                    referral["blood_bank_status"] = "available" if bb_status.get("estimated_units", 0) > 0 else "unavailable"
+                    referral["blood_bank_estimate"] = bb_status
+                except Exception as e:
+                    logger.warning(f"Blood bank CMS query failed: {e}")
+
+        # Fallback: Google Places if precomputed index unavailable
+        if referral is None and _real_facilities:
+            try:
+                nearby = await _real_facilities.find_nearby(
+                    request.latitude, request.longitude, radius_km=50)
+                if nearby:
+                    top = nearby[0]
+                    referral = {
+                        "facility_name": top["name"],
+                        "facility_type": top.get("category", "Hospital"),
+                        "distance_km": top["distance_km"],
+                        "eta_minutes": round(top["distance_km"] * 2, 0) if top["distance_km"] else None,
+                        "contact_phone": top.get("phone", "108"),
+                        "navigation_url": top["navigation_url"],
+                        "backup_facility": nearby[1] if len(nearby) > 1 else None,
+                        "capability_matched": capability_required,
+                        "source": "google_places_fallback",
+                    }
+            except Exception as e:
+                logger.warning(f"Google Places fallback failed: {e}")
+
+    # --- Step 6: Generate alerts ---
     alerts = []
     if risk["risk_level"] == "critical":
         alerts.append("EMERGENCY: Arrange immediate facility transfer")
     if risk["risk_level"] in ("high", "critical"):
         alerts.append("HIGH RISK pregnancy — refer to facility within 48 hours")
+    if risk_adjusted:
+        alerts.append(
+            f"PROJECTED RISK ESCALATION: Based on predicted Hb decline to "
+            f"{anemia['predicted_delivery_hb']} g/dL by delivery, risk upgraded "
+            f"from {risk['initial_risk_level']} to {risk['risk_level']}"
+        )
     if anemia and anemia["predicted_delivery_hb"] < 7.0:
         alerts.append("SEVERE ANEMIA RISK: Hb predicted to drop below 7 g/dL by delivery")
     if request.risk_factors.bp_systolic >= 140 or request.risk_factors.bp_diastolic >= 90:
@@ -331,6 +419,16 @@ async def dashboard_stats():
         "assessed_mild": anemia["assessed_mild"],
         "total_assessed_for_anemia": anemia["total_assessed_for_anemia"],
     }
+    # Apply differential privacy to aggregate dashboard statistics
+    # Laplace mechanism (Dwork, ICALP 2006) adds calibrated noise to counts
+    # before sharing, preventing re-identification from small-area aggregates.
+    if _dp_engine:
+        try:
+            stats = _dp_engine.privatize_stats(stats)
+            stats["differential_privacy_applied"] = True
+            stats["privacy_epsilon"] = _dp_engine.epsilon
+        except Exception as e:
+            logger.warning(f"DP privatization failed: {e}")
     return stats
 
 

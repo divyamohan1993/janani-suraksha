@@ -1,8 +1,8 @@
 """Fetch real facility and blood bank data from data.gov.in for all Indian states.
 
 Fetches from two resources:
-- 37670b6f-c236-49a7-8cd7-cc2dc610e32d: ~30,284 hospitals with geocoordinates
-- fced6df9-a360-4e08-8ca0-f283fc74ce15: ~2,823 blood banks with lat/lng
+- 37670b6f-c236-49a7-8cd7-cc2dc610e32d: ~28,128 hospitals total (~10,602 with valid geocoordinates)
+- fced6df9-a360-4e08-8ca0-f283fc74ce15: ~2,484 blood banks with valid lat/lng
 
 Run as: python -m app.precompute.generate_real_facilities
 """
@@ -76,13 +76,20 @@ def fetch_hospitals_paginated() -> dict[str, list[dict]]:
             f"&limit={PAGE_SIZE}&offset={offset}"
         )
 
-        try:
-            resp = urllib.request.urlopen(url, timeout=60)
-            data = json.loads(resp.read())
-        except Exception as e:
-            print(f"  API request failed at offset {offset}: {e}")
+        data = None
+        for attempt in range(5):
+            try:
+                resp = urllib.request.urlopen(url, timeout=120)
+                data = json.loads(resp.read())
+                break
+            except Exception as e:
+                wait = 2 ** attempt * 3
+                print(f"  Attempt {attempt + 1}/5 failed at offset {offset}: {e}. Retrying in {wait}s...")
+                time.sleep(wait)
+        if data is None:
+            print(f"  All retries exhausted at offset {offset}")
             if offset == 0:
-                raise RuntimeError(f"Failed to fetch hospital data: {e}")
+                raise RuntimeError(f"Failed to fetch hospital data after 5 retries")
             break
 
         records = data.get("records", [])
@@ -167,13 +174,20 @@ def fetch_blood_banks_paginated() -> list[dict]:
             f"&limit={PAGE_SIZE}&offset={offset}"
         )
 
-        try:
-            resp = urllib.request.urlopen(url, timeout=60)
-            data = json.loads(resp.read())
-        except Exception as e:
-            print(f"  API request failed at offset {offset}: {e}")
+        data = None
+        for attempt in range(5):
+            try:
+                resp = urllib.request.urlopen(url, timeout=120)
+                data = json.loads(resp.read())
+                break
+            except Exception as e:
+                wait = 2 ** attempt * 3
+                print(f"  Attempt {attempt + 1}/5 failed at offset {offset}: {e}. Retrying in {wait}s...")
+                time.sleep(wait)
+        if data is None:
+            print(f"  All retries exhausted at offset {offset}")
             if offset == 0:
-                print(f"  WARNING: Could not fetch blood bank data: {e}")
+                print(f"  WARNING: Could not fetch blood bank data after 5 retries")
                 return []
             break
 

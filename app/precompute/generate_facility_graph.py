@@ -1,7 +1,7 @@
 """Fetch real hospital data from data.gov.in and build precomputed spatial index.
 
-Uses resource 37670b6f-c236-49a7-8cd7-cc2dc610e32d which contains ~30,284
-hospitals with geocoordinates in the _location_coordinates field.
+Uses resource 37670b6f-c236-49a7-8cd7-cc2dc610e32d which contains ~28,128
+hospitals total, of which ~10,602 have valid geocoordinates for spatial indexing.
 
 Run as: python -m app.precompute.generate_facility_graph
 """
@@ -13,6 +13,8 @@ import time
 import urllib.parse
 import urllib.request
 from datetime import datetime, timezone
+
+import numpy as np
 
 # --- data.gov.in API config ---
 DATA_GOV_API_KEY = os.environ.get("DATA_GOV_API_KEY", "")
@@ -221,14 +223,21 @@ def fetch_all_hospitals() -> list[dict]:
             f"&limit={PAGE_SIZE}&offset={offset}"
         )
 
-        try:
-            resp = urllib.request.urlopen(url, timeout=60)
-            data = json.loads(resp.read())
-        except Exception as e:
-            print(f"  API request failed at offset {offset}: {e}")
+        data = None
+        for attempt in range(5):
+            try:
+                resp = urllib.request.urlopen(url, timeout=120)
+                data = json.loads(resp.read())
+                break
+            except Exception as e:
+                wait = 2 ** attempt * 3
+                print(f"  Attempt {attempt + 1}/5 failed at offset {offset}: {e}. Retrying in {wait}s...")
+                time.sleep(wait)
+        if data is None:
+            print(f"  All retries exhausted at offset {offset}")
             if offset == 0:
                 raise RuntimeError(
-                    f"Failed to fetch any data from data.gov.in: {e}. "
+                    f"Failed to fetch any data from data.gov.in after 5 retries. "
                     "Cannot proceed without real data."
                 )
             break
@@ -337,6 +346,23 @@ def grid_key(lat: float, lon: float) -> str:
     return f"{lat:.1f},{lon:.1f}"
 
 
+def haversine_vectorized(
+    grid_lats: np.ndarray, grid_lons: np.ndarray,
+    fac_lats: np.ndarray, fac_lons: np.ndarray,
+) -> np.ndarray:
+    """Vectorized haversine: returns distance matrix (n_grid, n_fac) in km."""
+    R = 6371.0
+    glat_r = np.radians(grid_lats)[:, None]
+    glon_r = np.radians(grid_lons)[:, None]
+    flat_r = np.radians(fac_lats)[None, :]
+    flon_r = np.radians(fac_lons)[None, :]
+
+    dlat = flat_r - glat_r
+    dlon = flon_r - glon_r
+    a = np.sin(dlat / 2) ** 2 + np.cos(glat_r) * np.cos(flat_r) * np.sin(dlon / 2) ** 2
+    return R * 2 * np.arcsin(np.sqrt(a))
+
+
 def precompute_shortest_path_trees(
     facilities: list[dict],
 ) -> dict[str, dict[str, dict]]:
@@ -345,8 +371,9 @@ def precompute_shortest_path_trees(
 
     Grid covers all of India at 0.1-degree resolution (~11 km cells).
     Only populates cells that have facilities within 200 km.
+
+    Uses numpy vectorized haversine for performance.
     """
-    # Compute bounding box from actual facility coordinates
     lats = [f["latitude"] for f in facilities]
     lons = [f["longitude"] for f in facilities]
 
@@ -358,18 +385,14 @@ def precompute_shortest_path_trees(
     lon_min = round(min(lons) - 0.5, 1)
     lon_max = round(max(lons) + 0.5, 1)
 
-    # Generate grid cell centers
-    grid_lats = []
-    lat = lat_min
-    while lat <= lat_max + 0.05:
-        grid_lats.append(round(lat, 1))
-        lat = round(lat + 0.1, 1)
+    grid_lats_list = np.arange(lat_min, lat_max + 0.05, 0.1).round(1)
+    grid_lons_list = np.arange(lon_min, lon_max + 0.05, 0.1).round(1)
 
-    grid_lons = []
-    lon = lon_min
-    while lon <= lon_max + 0.05:
-        grid_lons.append(round(lon, 1))
-        lon = round(lon + 0.1, 1)
+    # Build full grid (n_grid, 2)
+    glat_mesh, glon_mesh = np.meshgrid(grid_lats_list, grid_lons_list, indexing="ij")
+    grid_lats_flat = glat_mesh.ravel()
+    grid_lons_flat = glon_mesh.ravel()
+    n_grid = len(grid_lats_flat)
 
     spt: dict[str, dict[str, dict]] = {}
 
@@ -378,61 +401,82 @@ def precompute_shortest_path_trees(
         if not capable:
             continue
 
-        print(f"  Building SPT for {capability}: {len(capable)} facilities, "
-              f"{len(grid_lats)}x{len(grid_lons)} grid")
+        n_fac = len(capable)
+        print(f"  Building SPT for {capability}: {n_fac} facilities, "
+              f"{len(grid_lats_list)}x{len(grid_lons_list)} grid ({n_grid} cells)")
 
+        fac_lats = np.array([f["latitude"] for f in capable])
+        fac_lons = np.array([f["longitude"] for f in capable])
+
+        # Process in chunks to limit memory (~500 MB max)
+        CHUNK = max(1, min(n_grid, 50_000_000 // max(n_fac, 1)))
         spt[capability] = {}
 
-        for glat in grid_lats:
-            for glon in grid_lons:
+        for start in range(0, n_grid, CHUNK):
+            end = min(start + CHUNK, n_grid)
+            g_lats_chunk = grid_lats_flat[start:end]
+            g_lons_chunk = grid_lons_flat[start:end]
+
+            # (chunk_size, n_fac) distance matrix
+            dists = haversine_vectorized(g_lats_chunk, g_lons_chunk, fac_lats, fac_lons)
+
+            # Find nearest and second-nearest per grid cell
+            if n_fac >= 2:
+                idx2 = np.argpartition(dists, 2, axis=1)[:, :2]
+                rows = np.arange(end - start)[:, None]
+                d2 = dists[rows, idx2]
+                # Sort the two so col 0 is nearest
+                order = np.argsort(d2, axis=1)
+                idx2_sorted = np.take_along_axis(idx2, order, axis=1)
+                d2_sorted = np.take_along_axis(d2, order, axis=1)
+                best_idx = idx2_sorted[:, 0]
+                best_dist = d2_sorted[:, 0]
+                second_idx = idx2_sorted[:, 1]
+                second_dist = d2_sorted[:, 1]
+            else:
+                best_idx = np.zeros(end - start, dtype=int)
+                best_dist = dists[:, 0]
+                second_idx = None
+                second_dist = None
+
+            for i in range(end - start):
+                if best_dist[i] > 200:
+                    continue
+
+                glat = round(float(g_lats_chunk[i]), 1)
+                glon = round(float(g_lons_chunk[i]), 1)
                 gk = grid_key(glat, glon)
+                best = capable[int(best_idx[i])]
 
-                # Find nearest and second-nearest facility
-                best = None
-                best_dist = float("inf")
-                second = None
-                second_dist = float("inf")
+                entry = {
+                    "facility_id": best["facility_id"],
+                    "facility_name": best["name"],
+                    "facility_type": best["type"],
+                    "latitude": best["latitude"],
+                    "longitude": best["longitude"],
+                    "distance_km": round(float(best_dist[i]), 1),
+                    "eta_minutes": round(float(best_dist[i]) * 2.0, 0),
+                    "specialist_available": best.get("specialist_available", False),
+                    "blood_bank_status": best.get("blood_bank_status", "unavailable"),
+                    "has_functional_ot": best.get("has_functional_ot", False),
+                    "contact_phone": best.get("contact_phone", "108"),
+                }
 
-                for fac in capable:
-                    dist = haversine(glat, glon, fac["latitude"], fac["longitude"])
-                    if dist < best_dist:
-                        second = best
-                        second_dist = best_dist
-                        best = fac
-                        best_dist = dist
-                    elif dist < second_dist:
-                        second = fac
-                        second_dist = dist
-
-                # Only store if nearest is within 200 km
-                if best is not None and best_dist <= 200:
-                    entry = {
-                        "facility_id": best["facility_id"],
-                        "facility_name": best["name"],
-                        "facility_type": best["type"],
-                        "latitude": best["latitude"],
-                        "longitude": best["longitude"],
-                        "distance_km": round(best_dist, 1),
-                        "eta_minutes": round(best_dist * 2.0, 0),
-                        "specialist_available": best.get("specialist_available", False),
-                        "blood_bank_status": best.get("blood_bank_status", "unavailable"),
-                        "has_functional_ot": best.get("has_functional_ot", False),
-                        "contact_phone": best.get("contact_phone", "108"),
+                if second_idx is not None and second_dist[i] <= 300:
+                    sec = capable[int(second_idx[i])]
+                    entry["backup"] = {
+                        "facility_id": sec["facility_id"],
+                        "facility_name": sec["name"],
+                        "facility_type": sec["type"],
+                        "latitude": sec["latitude"],
+                        "longitude": sec["longitude"],
+                        "distance_km": round(float(second_dist[i]), 1),
+                        "eta_minutes": round(float(second_dist[i]) * 2.0, 0),
                     }
 
-                    # Precompute backup facility (2nd nearest) for O(1) backup lookup
-                    if second is not None and second_dist <= 300:
-                        entry["backup"] = {
-                            "facility_id": second["facility_id"],
-                            "facility_name": second["name"],
-                            "facility_type": second["type"],
-                            "latitude": second["latitude"],
-                            "longitude": second["longitude"],
-                            "distance_km": round(second_dist, 1),
-                            "eta_minutes": round(second_dist * 2.0, 0),
-                        }
+                spt[capability][gk] = entry
 
-                    spt[capability][gk] = entry
+        print(f"    → {len(spt[capability])} grid cells mapped")
 
     return spt
 
