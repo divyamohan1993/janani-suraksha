@@ -2,22 +2,31 @@ FROM python:3.12-slim AS builder
 
 WORKDIR /build
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt numpy
 
 COPY app/ app/
-COPY data/real_facilities*.json data/
-COPY data/learned_index_weights.json data/
 
-# Build arg for data.gov.in API key (used only during precompute, not baked into runtime image)
+# Copy ALL pre-built data files (avoids slow API re-fetching during build)
+COPY data/ data/
+
+# Build arg for data.gov.in API key (only needed if data files don't exist)
 ARG DATA_GOV_API_KEY=""
 ENV DATA_GOV_API_KEY=${DATA_GOV_API_KEY}
 
-# Precompute O(1) tables and fetch real facility data (baked into image)
-RUN mkdir -p data && \
-    python -m app.precompute.generate_risk_table && \
-    python -m app.precompute.generate_facility_graph && \
+# Regenerate risk_table and hb_trajectories (fast, no API needed).
+# Skip facility_graph and real_facilities if pre-built data already exists.
+RUN python -m app.precompute.generate_risk_table && \
     python -m app.precompute.generate_hb_trajectories && \
-    python -m app.precompute.generate_real_facilities
+    if [ ! -f data/facility_graph.json ]; then \
+        python -m app.precompute.generate_facility_graph; \
+    else \
+        echo "Using pre-built facility_graph.json"; \
+    fi && \
+    if [ ! -f data/real_facilities.json ]; then \
+        python -m app.precompute.generate_real_facilities; \
+    else \
+        echo "Using pre-built real_facilities.json"; \
+    fi
 
 FROM python:3.12-slim
 
